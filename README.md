@@ -13,7 +13,7 @@ XER files are read by JavaScript in the visitor's own browser. They are never up
 3. **Critical path analysis**: the current critical path, the longest path, near-critical activities, float consumption, delayed activities, a recovery actions table and the first 10 float paths.
 4. **Modification log**: every change since the previous update (new and deleted activities, logic, durations, costs, resources, constraints, calendars, names, actual dates), each with its previous value, new value and a blank for the explanation.
 5. **Earned value management**: PV, EV, SV, SV% and SPI (SPI = EV ÷ PV, SV% = SV ÷ PV), an S-curve, SPI and SV% trend charts, a monthly forecast, and reporting by bridge, by work package and by element (foundations, piers, columns, girders, deck pours, MSE walls, soil nail walls, commissioning and handover).
-6. **Target date risk analysis**: every target date rated high, medium or low from its float to the target, the float trend and its driving path.
+6. **Target date risk analysis**: every target date rated high, medium or low from its float to the target, the float trend and its driving path. Moving the **Schedule risk analysis** slider adds a Monte Carlo simulation: the remaining work is rescheduled 1,000 times with every remaining duration varying across the chosen range (up to 25% shorter and 50% longer), giving P50, P80 and P90 dates, the chance of meeting each target date, a probability chart and the activities that drive the uncertainty.
 7. **Schedule requirements compliance**: CPM, logic-driven, constraints, open ends and relationships, plus the DCMA 14-point assessment.
 8. **Progress this period**, 9. **Look-ahead** and 10. **Basis of the report**.
 

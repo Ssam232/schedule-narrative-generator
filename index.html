@@ -171,6 +171,12 @@ label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
 .tlist .aid { font-family: var(--font-mono); font-size: 12px; }
 .tag-c { display: inline-block; margin-left: 2px; padding: 0 5px; border-radius: 3px; background: var(--warn-soft); color: var(--warn); font-size: 11px; font-weight: 600; white-space: nowrap; }
 
+.range-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 4px 10px; }
+.range-field label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.range-field output { font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.range-field input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 6px 0 0; accent-color: var(--accent); }
+.range-ticks { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); }
+
 /* ---------- stage ---------- */
 .notice { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; padding: 10px 13px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface); font-size: 14px; }
 .notice p { margin: 0; flex: 1 1 260px; min-width: 0; }
@@ -359,6 +365,17 @@ label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
         </div>
       </section>
 
+      <section class="block" aria-labelledby="h-risk">
+        <h2 class="block-title" id="h-risk">Schedule risk analysis</h2>
+        <div class="range-field">
+          <label for="f-risk">Duration uncertainty</label>
+          <output id="f-risk-out" for="f-risk">Off</output>
+          <input type="range" id="f-risk" min="0" max="10" step="1" value="0" aria-describedby="f-risk-help">
+          <div class="range-ticks" aria-hidden="true"><span>Off</span><span>−12.5% to +25%</span><span>−25% to +50%</span></div>
+        </div>
+        <p class="hint" id="f-risk-help">Slide right to add a Monte Carlo analysis: the remaining work is rescheduled 1,000 times with every remaining duration varying across the range shown, giving P50, P80 and P90 dates and the chance of meeting each target date.</p>
+      </section>
+
       <details class="block" id="d-analysis">
         <summary class="block-title">Analysis settings</summary>
         <div class="fields">
@@ -505,7 +522,7 @@ function decodeXer(buf) {
 var CP1252_HIGH = [0x20AC, 0, 0x201A, 0x0192, 0x201E, 0x2026, 0x2020, 0x2021, 0x02C6, 0x2030, 0x0160, 0x2039, 0x0152, 0, 0x017D, 0,
   0, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014, 0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0, 0x017E, 0x0178];
 
-var XER_KEEP = { PROJECT: 1, PROJWBS: 1, TASK: 1, TASKPRED: 1, CALENDAR: 1, TASKRSRC: 1, RSRC: 1, ROLE: 1, PROJCOST: 1, ACTVTYPE: 1, ACTVCODE: 1, TASKACTV: 1, CURRTYPE: 1, UMEASURE: 1 };
+var XER_KEEP = { PROJECT: 1, PROJWBS: 1, TASK: 1, TASKPRED: 1, CALENDAR: 1, TASKRSRC: 1, RSRC: 1, ROLE: 1, PROJCOST: 1, ACTVTYPE: 1, ACTVCODE: 1, TASKACTV: 1, CURRTYPE: 1, UMEASURE: 1, SCHEDOPTIONS: 1 };
 
 function parseXer(text) {
   var tables = {}, header = null, rows = null, fields = null, last = null, sawTable = false;
@@ -764,14 +781,14 @@ function buildModel(xer, projId, opts) {
   });
   if (dup) warnings.push(dup + ' activities share an Activity ID with another activity; only the first of each was used for comparisons.');
 
-  var rels = [];
+  var rels = [], sched = schedOptions(T, projId);
   (T.TASKPRED || []).forEach(function (r) {
     var s = byId.get(r.task_id), p = byId.get(r.pred_task_id);
     if (!s && !p) return;
     if (!p) { s.extPreds++; return; }
     if (!s) { p.extSuccs++; return; }
     var lagHrs = snNum(r.lag_hr_cnt);
-    var rel = { pred: p, succ: s, type: (r.pred_type || 'PR_FS').replace(/^PR_/, ''), lagHrs: lagHrs, lag: lagHrs / s.hpd };
+    var rel = { pred: p, succ: s, type: (r.pred_type || 'PR_FS').replace(/^PR_/, ''), lagHrs: lagHrs, lag: lagHrs / s.hpd, lagMode: sched.lagCal, projCal: projCal };
     p.succs.push(rel); s.preds.push(rel); rels.push(rel);
   });
   /* resource assignments, budgets and expenses */
@@ -845,11 +862,23 @@ function buildModel(xer, projId, opts) {
     project: {
       id: projId, code: (pr.proj_short_name || '').trim(), name: name, dataDate: dd,
       mfb: parseP6Date(pr.plan_end_date), plannedStart: parseP6Date(pr.plan_start_date), scdFinish: parseP6Date(pr.scd_end_date),
-      critType: pr.critical_path_type || 'CT_TotFloat', critHrs: snNum(pr.critical_drtn_hr_cnt), cal: projCal,
+      critType: pr.critical_path_type || 'CT_TotFloat', critHrs: snNum(pr.critical_drtn_hr_cnt), cal: projCal, sched: sched,
       version: xer.version, exportDate: xer.exportDate
     },
     tasks: tasks, byCode: byCode, rels: rels, cals: cals, warnings: warnings,
     totals: tot, currency: currency, codeTypes: codeTypes, wbsDepth: wbsDepth, wbsNodes: wbs
+  };
+}
+
+/* P6 scheduling options that change how dates are calculated (SCHEDOPTIONS) */
+function schedOptions(T, projId) {
+  var r = (T.SCHEDOPTIONS || []).filter(function (x) { return x.proj_id === projId; })[0] || (T.SCHEDOPTIONS || [])[0] || {};
+  var lc = String(r.sched_calendar || '').toLowerCase();
+  return {
+    lagCal: /succ/.test(lc) ? 'succ' : /24/.test(lc) ? '24h' : /proj/.test(lc) ? 'proj' : 'pred',
+    progressOverride: r.sched_progress_override === 'Y' || r.sched_retained_logic === 'N',
+    ssFromEarly: r.sched_lag_early_start_flag === 'Y',
+    known: !!(T.SCHEDOPTIONS && T.SCHEDOPTIONS.length)
   };
 }
 
@@ -1371,9 +1400,20 @@ function relFloat(r, DD) {
     else if (r.type === 'FF') { from = p.finish; to = s.finish; }
     else { from = pStart; to = s.finish; }
     if (from != null && to != null) {
-      var base = calPos(cal, from) + r.lagHrs;
-      if (startType) base = Math.max(base, calPos(cal, DD));
-      out = (calPos(cal, to) - base) / (cal.hpd || 8);
+      var mode = r.lagMode || 'pred';
+      if (mode === 'pred') {
+        var base = calPos(cal, from) + r.lagHrs;
+        if (startType) base = Math.max(base, calPos(cal, DD));
+        out = (calPos(cal, to) - base) / (cal.hpd || 8);
+      } else {
+        // lag counted on the successor's calendar, in elapsed hours, or on the project calendar
+        var sc = s.cal, allowed;
+        if (mode === 'succ') allowed = calPos(sc, from) + r.lagHrs;
+        else if (mode === '24h') allowed = calPos(sc, from + r.lagHrs * 3600000);
+        else allowed = calPos(sc, calAt(r.projCal || cal, calPos(r.projCal || cal, from) + r.lagHrs, false));
+        if (startType) allowed = Math.max(allowed, calPos(sc, DD));
+        out = (calPos(sc, to) - allowed) / (sc.hpd || 8);
+      }
     }
   }
   r._rfDD = DD; r._rf = out;
@@ -1874,9 +1914,28 @@ function critStrict(m, s) {
   return st;
 }
 
+/* ---------- schedule risk analysis (risk.js), cached on the model ---------- */
+function riskAnalysis(cur, R, M, u) {
+  var inc = cur.tasks.filter(s13Inc);
+  if (!inc.length) return { none: true };
+  var rec = [], seen = new Set();
+  function add(t, start) { if (t && s13Inc(t) && !seen.has(t.code)) { seen.add(t.code); rec.push({ t: t, start: !!start }); } }
+  M.targets.forEach(function (x) { if (!x.done) add(x.t, x.isStart); });
+  if (R.headline) add(R.headline.t, false);
+  if (R.finish) add(R.finish.t, false);
+  var H = R.headline && s13Inc(R.headline.t) ? R.headline.t : (R.finish && s13Inc(R.finish.t) ? R.finish.t : null);
+  var iter = inc.length <= 3000 ? 1000 : Math.max(300, Math.min(1000, Math.round(3e6 / inc.length)));
+  var key = [u, iter, rec.map(function (r) { return r.t.code + (r.start ? '^' : ''); }).join(','), H ? H.code : ''].join('|');
+  if (cur._risk && cur._risk.key === key) return cur._risk.res;
+  var res = riskSimulate(cur, { u: u, iter: iter, rho: 0.3, seed: 20261022, record: rec, sensTo: H });
+  res.headline = H;
+  cur._risk = { key: key, res: res };
+  return res;
+}
+
 /* ---------- everything for the monthly report ---------- */
 function analyzeMonthly(R, ctx, settings) {
-  var s = Object.assign({ evBasis: 'auto', groupA: 'auto', groupB: 'auto', elemSource: 'auto', elemText: null, targets: null, floatPaths: 'auto', pathEnd: '', nPaths: 10 }, R.s, settings || {});
+  var s = Object.assign({ evBasis: 'auto', groupA: 'auto', groupB: 'auto', elemSource: 'auto', elemText: null, targets: null, floatPaths: 'auto', pathEnd: '', nPaths: 10, riskLevel: 0 }, R.s, settings || {});
   var cur = R.cur, near = +s.nearCrit || 20, DD = cur.project.dataDate;
   var M = {};
   M.series = buildSeries(cur, R.prev, R.bl, ctx.hist);
@@ -1936,6 +1995,18 @@ function analyzeMonthly(R, ctx, settings) {
     M.longest.wasCount = was.size;
   }
   M.targets = targetAnalysis(cur, R, M, s);
+  if (+s.riskLevel > 0) {
+    M.risk = riskAnalysis(cur, R, M, +s.riskLevel);
+    if (M.risk && !M.risk.none) M.targets.forEach(function (x) {
+      if (x.done) return;
+      var r = M.risk.results.get(x.t.code); if (!r) return;
+      x.mc = { p50: r.p50, p80: r.p80, p90: r.p90, chance: x.target != null ? riskChance(r, targetEnd(x.target, x.isStart)) : null };
+      if (x.mc.chance != null) {
+        if (x.mc.chance < 0.5 && x.rating !== 'High') { x.rating = 'High'; x.mcRaised = true; }
+        else if (x.mc.chance < 0.8 && x.rating === 'Low') { x.rating = 'Medium'; x.mcRaised = true; }
+      }
+    });
+  }
   M.compliance = complianceChecks(cur, R, new Set(M.targets.map(function (x) { return x.t.code; })));
   M.delayed = delayedActivities(cur, R, near);
   if (R.cmp) M.costRes = costResourceChanges(cur, R.cmp);
@@ -1950,6 +2021,228 @@ function analyzeMonthly(R, ctx, settings) {
     M.consumption = { lostN: lostN, gainN: gainN, lostDays: lost, lostNear: lostCrit };
   }
   return M;
+}
+
+
+
+/* =====================================================================
+   Schedule Narrative — schedule risk analysis (Monte Carlo)
+   Re-schedules the remaining work many times, each time drawing every
+   remaining duration from a triangular distribution, and honours each
+   activity's calendar, the relationships and lags, the data date and the
+   date constraints. Reports how likely each target date is and which
+   activities matter most. Pure functions on engine.js models; no DOM.
+   ===================================================================== */
+
+/* The moment a working-time position is reached on a calendar. A finish
+   lands at the end of the last working period (17:00), a start at the
+   beginning of the next one (08:00 the next working day). */
+function calAt(cal, pos, asStart) {
+  calBuild(cal);
+  var cum = cal._cum, n = cum.length - 1;
+  if (!(pos > cum[0])) return CAL_LO * SN_DAY;
+  if (pos >= cum[n]) return (CAL_LO + n) * SN_DAY;
+  var lo = 0, hi = n - 1;
+  while (lo < hi) { var mid = (lo + hi) >> 1; if (asStart ? cum[mid + 1] > pos : cum[mid + 1] >= pos) hi = mid; else lo = mid + 1; }
+  var day = CAL_LO + lo, need = pos - cum[lo], sl = calDaySlots(cal, day), h;
+  if (sl && sl.length) {
+    h = sl[sl.length - 1][1];
+    for (var k = 0; k < sl.length; k++) {
+      var len = sl[k][1] - sl[k][0];
+      if (asStart ? need < len - 1e-9 : need <= len + 1e-9) { h = sl[k][0] + need; break; }
+      need -= len;
+    }
+  } else h = 8 + need;
+  return day * SN_DAY + Math.round(h * 3600000);
+}
+
+function rkRandom(seed) {
+  var s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    var t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/* standard normal distribution function (Abramowitz and Stegun 7.1.26) */
+function rkPhi(z) {
+  var x = Math.abs(z) / Math.SQRT2, t = 1 / (1 + 0.3275911 * x);
+  var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return z >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+}
+/* inverse of the triangular distribution (min a, most likely c, max b) */
+function rkTri(r, a, c, b) {
+  var F = (c - a) / (b - a);
+  return r < F ? a + Math.sqrt(r * (b - a) * (c - a)) : b - Math.sqrt((1 - r) * (b - a) * (b - c));
+}
+function rkQuantile(sorted, q) {
+  if (!sorted.length) return null;
+  var x = q * (sorted.length - 1), i = Math.floor(x), f = x - i;
+  return i + 1 < sorted.length ? sorted[i] * (1 - f) + sorted[i + 1] * f : sorted[i];
+}
+
+var RK_START_MIN = { CS_MSOA: 1, CS_MSO: 1 }, RK_FINISH_MIN = { CS_MEOA: 1, CS_MEO: 1 };
+function rkFinishMoment(ms) { return ms != null && ms % SN_DAY === 0 ? ms + SN_DAY : ms; }
+
+/* The remaining network in a form the simulation can run quickly. */
+function riskNetwork(m) {
+  var P = m.project, DD = P.dataDate, so = P.sched || { lagCal: 'pred' }, projCal = P.cal;
+  var acts = m.tasks.filter(function (t) { return t.normal && t.status !== 'C' && m.byCode.get(t.code) === t; });
+  var n = acts.length, ix = new Map();
+  acts.forEach(function (t, i) { ix.set(t, i); });
+  var N = {
+    n: n, acts: acts, ix: ix, cal: new Array(n), dur: new Float64Array(n), lo: new Float64Array(n), flo: new Float64Array(n),
+    act: new Uint8Array(n), ss0: new Float64Array(n), mandS: new Float64Array(n), mandF: new Float64Array(n), preds: new Array(n),
+    progOver: !!so.progressOverride, ssEarly: !!so.ssFromEarly, lagCal: so.lagCal || 'pred', projCal: projCal
+  };
+  function conv(o, base, sc) {
+    // a predecessor date (position on its calendar) plus the lag, as a position on the successor's calendar
+    if (N.lagCal === 'succ') return (o.same ? base : calPos(sc, calAt(o.pcal, base, false))) + o.lag;
+    if (N.lagCal === '24h') return calPos(sc, calAt(o.pcal, base, false) + o.lag * 3600000);
+    if (N.lagCal === 'proj') { var tm = calAt(o.pcal, base, false); return calPos(sc, calAt(projCal, calPos(projCal, tm) + o.lag, false)); }
+    return o.same ? base + o.lag : calPos(sc, calAt(o.pcal, base + o.lag, false));
+  }
+  N.conv = conv;
+  acts.forEach(function (t, i) {
+    var c = t.cal;
+    N.cal[i] = c;
+    N.dur[i] = t.isMs ? 0 : Math.max(0, t.rd * t.hpd);
+    var dd = calPos(c, DD), lo = dd, flo = -Infinity;
+    N.act[i] = t.status === 'A' ? 1 : 0;
+    N.ss0[i] = t.status === 'A' && t.as != null ? calPos(c, t.as) : dd;
+    N.mandS[i] = NaN; N.mandF[i] = NaN;
+    if (t.status !== 'A') {
+      [t.cstr, t.cstr2].forEach(function (k) {
+        if (!k || k.date == null) return;
+        if (RK_START_MIN[k.type]) lo = Math.max(lo, calPos(c, k.date));
+        else if (RK_FINISH_MIN[k.type]) flo = Math.max(flo, calPos(c, rkFinishMoment(k.date)));
+        else if (k.type === 'CS_MANDSTART') N.mandS[i] = calPos(c, k.date);
+        else if (k.type === 'CS_MANDFIN') N.mandF[i] = calPos(c, rkFinishMoment(k.date));
+      });
+    }
+    var list = [];
+    t.preds.forEach(function (r) {
+      var p = r.pred;
+      if (!p.normal) return;
+      var o = { j: ix.has(p) ? ix.get(p) : -1, type: r.type, lag: r.lagHrs, pcal: p.cal, same: p.cal === c };
+      o.fast = o.same && (N.lagCal === 'pred' || N.lagCal === 'succ');
+      if (o.j >= 0) { list.push(o); return; }
+      if (p.status !== 'C' || t.status === 'A') return;
+      // a completed predecessor still holds its successor through a lag that runs past the data date
+      var pf = p.af != null ? p.af : p.finish, ps = p.as != null ? p.as : p.start;
+      if (r.type === 'FS' || r.type === 'FF') { if (pf == null) return; var x = conv(o, calPos(p.cal, pf), c); if (r.type === 'FS') lo = Math.max(lo, x); else flo = Math.max(flo, x); }
+      else { if (ps == null) return; var y = conv(o, calPos(p.cal, ps), c); if (r.type === 'SS') lo = Math.max(lo, y); else flo = Math.max(flo, y); }
+    });
+    N.preds[i] = list;
+    N.lo[i] = lo; N.flo[i] = flo;
+  });
+  // topological order of the remaining activities
+  var indeg = new Int32Array(n), succ = new Array(n);
+  for (var i = 0; i < n; i++) succ[i] = [];
+  N.preds.forEach(function (list, i) { list.forEach(function (o) { indeg[i]++; succ[o.j].push(i); }); });
+  var order = [], queue = [];
+  for (var k = 0; k < n; k++) if (!indeg[k]) queue.push(k);
+  for (var q = 0; q < queue.length; q++) { var v = queue[q]; order.push(v); succ[v].forEach(function (w) { if (--indeg[w] === 0) queue.push(w); }); }
+  N.order = order;
+  N.loops = n - order.length;
+  return N;
+}
+
+function riskPass(N, f, ES, EF) {
+  var order = N.order, dur = N.dur, preds = N.preds;
+  for (var k = 0; k < order.length; k++) {
+    var i = order[k], d = dur[i] * (f ? f[i] : 1), es = N.lo[i], fin = N.flo[i], pr = preds[i], started = N.act[i];
+    for (var q = 0; q < pr.length; q++) {
+      var o = pr[q], j = o.j, ty = o.type;
+      if (started && (N.progOver || (ty !== 'FS' && ty !== 'FF'))) continue;
+      var base = ty === 'FS' || ty === 'FF' ? EF[j] : (N.act[j] && !N.ssEarly ? N.ss0[j] : ES[j]);
+      var x = o.fast ? base + o.lag : N.conv(o, base, N.cal[i]);
+      if (ty === 'FS' || ty === 'SS') { if (x > es) es = x; }
+      else if (x > fin) fin = x;
+    }
+    if (fin - d > es) es = fin - d;
+    if (N.mandS[i] === N.mandS[i]) es = N.mandS[i];
+    if (N.mandF[i] === N.mandF[i]) es = N.mandF[i] - d;
+    ES[i] = es; EF[i] = es + d;
+  }
+}
+
+/* opts: { u (0.05-0.5), iter, rho, seed, record: [{t, start}], sensTo: t } */
+function riskSimulate(m, opts) {
+  var t0 = Date.now(), N = riskNetwork(m), n = N.n;
+  var iter = opts.iter || 1000, u = opts.u, rho = opts.rho == null ? 0.3 : opts.rho, a = 1 - u / 2, b = 1 + u, sq = Math.sqrt(1 - rho * rho);
+  var ES0 = new Float64Array(n), EF0 = new Float64Array(n);
+  riskPass(N, null, ES0, EF0);
+  // how closely the simulation reproduces P6's own forecast
+  var matched = 0, checked = 0, worst = [], inOrder = new Uint8Array(n);
+  N.order.forEach(function (i) { inOrder[i] = 1; });
+  N.acts.forEach(function (t, i) {
+    if (t.finish == null || !inOrder[i]) return;
+    var p6 = calPos(t.cal, t.finish), diff = (EF0[i] - p6) / (t.cal.hpd || 8);
+    checked++;
+    if (Math.abs(diff) <= 0.05) matched++; else worst.push({ t: t, diff: diff });
+  });
+  worst.sort(function (x, y) { return Math.abs(y.diff) - Math.abs(x.diff); });
+  var rnd = rkRandom(opts.seed || 20261022), spare = null;
+  function gauss() {
+    if (spare != null) { var s = spare; spare = null; return s; }
+    var u1 = 0; while (u1 < 1e-12) u1 = rnd();
+    var r = Math.sqrt(-2 * Math.log(u1)), th = 2 * Math.PI * rnd();
+    spare = r * Math.sin(th); return r * Math.cos(th);
+  }
+  var rec = (opts.record || []).map(function (x) { return { t: x.t, start: !!x.start, i: N.ix.get(x.t) }; }).filter(function (x) { return x.i != null; });
+  var out = rec.map(function () { return new Float64Array(iter); });
+  var si = opts.sensTo && N.ix.has(opts.sensTo) ? N.ix.get(opts.sensTo) : null, shpd = si != null ? (N.cal[si].hpd || 8) : 8;
+  var sx = new Float64Array(n), sxx = new Float64Array(n), sxy = new Float64Array(n), sy = 0, syy = 0;
+  var f = new Float64Array(n), z = new Float64Array(n), ES = new Float64Array(n), EF = new Float64Array(n);
+  for (var it = 0; it < iter; it++) {
+    var zg = gauss();
+    for (var i = 0; i < n; i++) {
+      if (!(N.dur[i] > 0)) { f[i] = 1; z[i] = 0; continue; }
+      var zi = gauss();
+      z[i] = zi;
+      f[i] = rkTri(rkPhi(rho * zg + sq * zi), a, 1, b);
+    }
+    riskPass(N, f, ES, EF);
+    for (var k = 0; k < rec.length; k++) out[k][it] = rec[k].start ? ES[rec[k].i] : EF[rec[k].i];
+    if (si != null) {
+      var y = (EF[si] - EF0[si]) / shpd;
+      sy += y; syy += y * y;
+      for (var j = 0; j < n; j++) { var zz = z[j]; if (zz) { sx[j] += zz; sxx[j] += zz * zz; sxy[j] += zz * y; } }
+    }
+  }
+  var res = new Map();
+  rec.forEach(function (r, k) {
+    var t = r.t, cal = t.cal, hpd = cal.hpd || 8, det = r.start ? ES0[r.i] : EF0[r.i];
+    var d = Array.from(out[k], function (v) { return (v - det) / hpd; }).sort(function (x, y) { return x - y; });
+    var p6Date = r.start ? t.start : t.finish, p6Pos = p6Date != null ? calPos(cal, p6Date) : det;
+    var at = function (q) { var dq = rkQuantile(d, q); return { delta: dq, date: calAt(cal, p6Pos + dq * hpd, r.start) }; };
+    var curve = [];
+    for (var c = 0; c <= 40; c++) { var qq = c / 40, dq = rkQuantile(d, qq); curve.push({ q: qq, date: calAt(cal, p6Pos + dq * hpd, r.start) }); }
+    res.set(t.code, { t: t, start: r.start, p50: at(0.5), p80: at(0.8), p90: at(0.9), min: at(0), max: at(1), mean: d.reduce(function (x, y) { return x + y; }, 0) / d.length, curve: curve, p6Pos: p6Pos, deltas: d, hpd: hpd, cal: cal });
+  });
+  var sens = [];
+  if (si != null && iter > 2) {
+    var vy = iter * syy - sy * sy;
+    for (var q = 0; q < n; q++) {
+      if (!(N.dur[q] > 0)) continue;
+      var vx = iter * sxx[q] - sx[q] * sx[q];
+      if (vx <= 0 || vy <= 0) continue;
+      var r2 = (iter * sxy[q] - sx[q] * sy) / Math.sqrt(vx * vy);
+      if (r2 > 0.02) sens.push({ t: N.acts[q], corr: r2 });
+    }
+    sens.sort(function (x, y) { return y.corr - x.corr; });
+  }
+  return { iter: iter, u: u, rho: rho, n: n, matched: matched, checked: checked, worst: worst.slice(0, 5), loops: N.loops, results: res, sens: sens.slice(0, 10), sensTo: opts.sensTo || null, ms: Date.now() - t0 };
+}
+
+/* chance that a recorded activity finishes (or starts) by a moment */
+function riskChance(r, ms) {
+  if (!r || ms == null) return null;
+  var lim = calPos(r.cal, ms), k = 0;
+  for (var i = 0; i < r.deltas.length; i++) if (r.p6Pos + r.deltas[i] * r.hpd <= lim + 1e-6) k++;
+  return k / r.deltas.length;
 }
 
 
@@ -1995,6 +2288,14 @@ function monthTicks(x0, x1, maxTicks) {
   });
   return out;
 }
+/* ticks for short spans: every 1, 2, 7 or 14 days, labelled day and month */
+function dayTicks(x0, x1, maxTicks) {
+  var span = (x1 - x0) / SN_DAY, steps = [1, 2, 7, 14], step = steps.filter(function (st) { return span / st <= (maxTicks || 8); })[0] || 14;
+  var d = new Date(Math.ceil(x0 / SN_DAY) * SN_DAY), out = [];
+  if (step >= 7) while (d.getUTCDay() !== 1) d = new Date(d.getTime() + SN_DAY);
+  for (var t = d.getTime(), g = 0; t <= x1 && g < 60; t += step * SN_DAY, g++) { var dd = new Date(t); out.push({ x: t, label: dd.getUTCDate() + ' ' + MON_ABBR[dd.getUTCMonth()] }); }
+  return out;
+}
 function roundedBar(x, y0, y1, w, r) {
   // a column from the baseline y0 to the value y1, rounded only at the data end
   var h = Math.abs(y1 - y0); r = Math.min(r, w / 2, h);
@@ -2012,6 +2313,7 @@ function labelIndexes(n, fit) {
 function legendSvg(items, x, y, maxW) {
   // items: [{name, slot, kind: 'line'|'dash'|'bar'|'band'}]; laid out in equal columns
   var out = '', rowH = 18;
+  if (!items.length) return { svg: '', bottom: y - 8 };
   var colW = Math.min(maxW, Math.max.apply(null, items.map(function (it) { return 22 + 6 + chTextW(it.name, 11.5) + 22; })));
   var cols = Math.max(1, Math.min(items.length, Math.floor(maxW / colW)));
   if (cols > 1) colW = maxW / cols;
@@ -2064,7 +2366,7 @@ function lineChartSvg(o) {
     out += '<line class="c-ref" x1="' + L + '" y1="' + chNum(Y(r.y)) + '" x2="' + (L + pw) + '" y2="' + chNum(Y(r.y)) + '"/>';
     if (r.label) out += '<text class="c-note" x="' + (L + 6) + '" y="' + chNum(Y(r.y) - 5) + '">' + chEsc(r.label) + '</text>';
   });
-  var ticks = o.xTicks || monthTicks(x0, x1, 9);
+  var ticks = o.xTicks || (x1 - x0 <= 75 * SN_DAY ? dayTicks(x0, x1, 8) : monthTicks(x0, x1, 9));
   ticks.forEach(function (t) { out += '<text class="c-tick" x="' + chNum(X(t.x)) + '" y="' + (T + ph + 19) + '" text-anchor="middle">' + chEsc(t.label) + '</text>'; });
   (o.vlines || []).forEach(function (v) {
     if (v.x < x0 || v.x > x1) return;
@@ -2548,6 +2850,10 @@ function buildNarrative(R, M, o) {
       M.targets.forEach(function (x) { cnt[x.rating] = (cnt[x.rating] || 0) + 1; });
       keys.unshift('Of the ' + plural(M.targets.length, 'target date') + ' analysed, ' + joinAnd([cnt.High ? fnum(cnt.High) + ' ' + (cnt.High === 1 ? 'is' : 'are') + ' high risk' : '', cnt.Medium ? fnum(cnt.Medium) + ' medium' : '', cnt.Low ? fnum(cnt.Low) + ' low' : '', cnt.Achieved ? fnum(cnt.Achieved) + ' achieved' : '']) + (num.targets ? ' (' + ref('targets') + ')' : '') + '.');
     }
+    if (M && M.risk && !M.risk.none && M.risk.headline) {
+      var hx1 = M.targets.filter(function (x) { return x.t === M.risk.headline && x.mc; })[0];
+      if (hx1 && hx1.mc.chance != null) keys.splice(1, 0, 'The schedule risk analysis gives ' + esc(hx1.t.name) + ' a ' + pctTxt(100 * hx1.mc.chance) + ' chance of meeting its target of ' + D(hx1.target) + '; its P80 date is ' + D(hx1.mc.p80.date) + '.');
+    }
     if (!keys.length) keys.push('No schedule risks or issues were identified from the data.');
     b += ul(keys.concat([ph('Add other risks and issues for this period, such as weather, access, permits or design')]));
     section('summary', b);
@@ -2997,10 +3303,11 @@ function buildNarrative(R, M, o) {
 
   /* ---------- 6. Target dates ---------- */
   if (num.targets) {
-    var b6 = '', TG = M.targets;
+    var b6 = '', TG = M.targets, RK = M.risk && !M.risk.none ? M.risk : null, sub6 = subs('targets');
+    if (RK && TG.length) b6 += sub6('Target date assessment');
     if (!TG.length) b6 += p('No target dates were found. Target dates are milestones or activities with a deadline constraint (for example Finish On or Before) in P6, the headline milestone and the project Must Finish By date. Choose them under Report structure.');
     else {
-      b6 += p('Each target date is assessed from its forecast against the target, the float remaining to the target, how that float has moved across the versions loaded and the driving path behind it. ' + 'Targets come from ' + (o.targetsChosen ? 'the selection under Report structure' : 'deadline constraints in P6, the headline milestone and the project Must Finish By date') + '. Ratings: <strong>High</strong> when the forecast misses the target, no float is left, or float is falling fast enough to run out before the target; <strong>Medium</strong> when float is ' + wd(near) + ' or less, fell by five or more working days this period, or three or more other paths are within ' + wd(near) + ' of the driving path; otherwise <strong>Low</strong>.');
+      b6 += p('Each target date is assessed from its forecast against the target, the float remaining to the target, how that float has moved across the versions loaded and the driving path behind it. ' + 'Targets come from ' + (o.targetsChosen ? 'the selection under Report structure' : 'deadline constraints in P6, the headline milestone and the project Must Finish By date') + '. Ratings: <strong>High</strong> when the forecast misses the target, no float is left, or float is falling fast enough to run out before the target; <strong>Medium</strong> when float is ' + wd(near) + ' or less, fell by five or more working days this period, or three or more other paths are within ' + wd(near) + ' of the driving path; otherwise <strong>Low</strong>.' + (RK ? ' With the schedule risk analysis on, a target is also rated High when its chance of being met is below 50%, and Medium when it is below 80%.' : ''));
       b6 += table([['Target date', 'txt'], ['Target', 'date'], ['Forecast', 'date'], ['Var. (cal. days)', 'num'], ['Float to target', 'num'], ['Change', 'num'], ['Trend (days/month)', 'num'], ['Risk', 'txt']],
         TG.map(function (x) { return [actCell(x.t), x.target != null ? D(x.target) : '—', x.date != null ? D(x.date) + (x.done ? ' A' : '') : '—', x.varCal != null ? sgn(x.varCal) : '—', x.margin != null ? fnum(x.margin) : '—', x.change != null ? sgn(x.change) : '—', !x.done && x.slope != null ? sgn(Math.round(x.slope * 10) / 10) : '—', ratingCell(x.rating)]; }), 'target dates', { all: true });
       b6 += note('Float to target is the working time between the forecast and the target on the activity’s calendar; negative values are behind. Change is since ' + (prev ? 'the previous update' : 'the last version loaded') + '; trend is the average change per month over up to six versions.');
@@ -3025,10 +3332,40 @@ function buildNarrative(R, M, o) {
             if (x.oosOnPath && x.oosOnPath.length) q.push(plural(x.oosOnPath.length, 'activity', 'activities') + ' with out-of-sequence progress');
             if (q.length) lines.push('The driving path includes ' + joinAnd(q) + ', which add uncertainty to the forecast.');
           }
+          if (x.mc) lines.push('The risk analysis gives ' + (x.mc.chance != null ? 'a ' + pctTxt(100 * x.mc.chance) + ' chance of meeting the target, with a P80 date of ' : 'a P80 date of ') + D(x.mc.p80.date) + (num.targets ? ' (' + ref('targets', 2) + ')' : '') + '.');
         }
         b6 += h4(t.code + ' ' + t.name + ' — ' + x.rating);
         b6 += p(lines.join(' ') + (x.done ? '' : ' ' + ph(x.rating === 'Low' ? 'Risks and monitoring' : 'Risks, mitigation and owner')));
       });
+    }
+    if (RK) {
+      if (TG.length) b6 += sub6('Schedule risk analysis');
+      var uHi = fnum(RK.u * 100), uLo = fnum(RK.u * 50);
+      b6 += p('The remaining work was simulated ' + thou(RK.iter) + ' times (Monte Carlo analysis). In each run, every remaining duration was drawn from a triangular distribution between ' + uLo + '% shorter and ' + uHi + '% longer than its current estimate, most likely at the current estimate, with durations partly correlated (0.3) so that delays tend to come together. Each run reschedules the network with the activities’ calendars, the relationships and lags, the data date and the date constraints. P50, P80 and P90 are the dates met in half, 80% and 90% of the runs.');
+      var share = RK.checked ? RK.matched / RK.checked : 1;
+      b6 += p(share >= 0.95 ? 'Run with the current durations, the simulation reproduces P6’s forecast finish for ' + fnum(RK.matched) + ' of ' + plural(RK.checked, 'remaining activity', 'remaining activities') + ', so its results line up with the schedule.'
+        : 'Run with the current durations, the simulation reproduces P6’s forecast finish for only ' + fnum(RK.matched) + ' of ' + plural(RK.checked, 'remaining activity', 'remaining activities') + (RK.worst.length ? ' (for example ' + act(RK.worst[0].t) + ', ' + wd(Math.abs(RK.worst[0].diff)) + (RK.worst[0].diff > 0 ? ' later' : ' earlier') + ')' : '') + '. P6 is probably using settings or data this analysis does not model, such as resource levelling, external dates or expected finish dates. The results are measured from P6’s own forecasts, but treat them with caution.');
+      if (RK.loops) b6 += p(Plural(RK.loops, 'activity is', 'activities are') + ' in a logic loop and could not be simulated.');
+      var mrows6 = TG.filter(function (x) { return !x.done && x.mc; }).map(function (x) { return [actCell(x.t), x.target != null ? D(x.target) : '—', D(x.date), D(x.mc.p50.date), D(x.mc.p80.date), D(x.mc.p90.date), x.mc.chance != null ? '<strong>' + pctTxt(100 * x.mc.chance) + '</strong>' : '—']; });
+      if (mrows6.length) b6 += table([['Target date', 'txt'], ['Target', 'date'], ['P6 forecast', 'date'], ['P50', 'date'], ['P80', 'date'], ['P90', 'date'], ['Chance of meeting target', 'num']], mrows6, '', { all: true });
+      var HK = RK.headline, hr = HK ? RK.results.get(HK.code) : null;
+      if (hr) {
+        var hx = TG.filter(function (x) { return x.t === HK; })[0], tEnd = hx && hx.target != null ? targetEnd(hx.target, hx.isStart) : (R.mfb && R.finish && R.finish.t === HK ? targetEnd(R.mfb.date, false) : null);
+        var chance = tEnd != null ? riskChance(hr, tEnd) : null;
+        b6 += p('For ' + act(HK) + ', the P50 date is ' + D(hr.p50.date) + ', the P80 date is ' + D(hr.p80.date) + ' and the P90 date is ' + D(hr.p90.date) + ', against the P6 forecast of ' + D(HK.finish) + (chance != null ? '; the chance of meeting its target of ' + D(hx ? hx.target : R.mfb.date) + ' is ' + pctTxt(100 * chance) + '.' : '.'));
+        var cpts = hr.curve.map(function (c) { return { x: c.date, y: 100 * c.q }; });
+        var vl = [{ x: HK.finish, label: 'P6 forecast' }];
+        if (tEnd != null) vl.push({ x: tEnd - (hx && hx.isStart ? 0 : 1), label: 'Target' });
+        var hov6 = hr.curve.filter(function (c, i) { return i % 2 === 0; }).map(function (c) { return { x: c.date, title: D(c.date), rows: [['chance of finishing by this date', pctTxt(100 * c.q), 1, 'line']] }; });
+        var pc = lineChartSvg({ label: 'Probability of finishing ' + HK.name + ' by each date', h: 280, legend: [], series: [{ name: HK.name, slot: 1, points: cpts }], yFmt: function (v) { return fnum(v) + '%'; }, yMin: 0, yMax: 100, refs: [{ y: 80, label: 'P80' }], vlines: vl, hover: hov6 });
+        b6 += figure('risk', pc, 'Chance of finishing ' + HK.name + ' by each date, from ' + thou(RK.iter) + ' simulated runs.');
+      }
+      if (RK.sens.length && HK) {
+        b6 += h4('Activities that drive the uncertainty in ' + HK.name) + table([['ID', 'id'], ['Activity', 'txt'], ['Rem. dur.', 'num'], ['Total float', 'num'], ['Sensitivity', 'num']],
+          RK.sens.map(function (x) { return [idCell(x.t.code), esc(x.t.name), days(x.t.rd), tfCell(x.t), pctTxt(100 * x.corr)]; }), 'activities', { all: true });
+        b6 += note('Sensitivity is the correlation between an activity’s own variation and the finish of ' + esc(HK.name) + ' across the runs; the higher it is, the more that activity’s duration drives the result.');
+      }
+      b6 += p(ph('Note specific risks, such as weather, approvals or supply, that would widen or narrow these ranges'));
     }
     section('targets', b6);
   }
@@ -3136,6 +3473,7 @@ function buildNarrative(R, M, o) {
       mth.push(M.paths.source === 'p6' ? 'Float paths are taken from the P6 multiple float path fields in the export.' : 'Float paths are calculated from early dates and relationships: relationship float is the working time, on the predecessor’s calendar, between the date a relationship allows and the successor’s scheduled date.');
       if (evOk) mth.push('Earned value uses ' + EVF.what + (E.hasBaseline ? ' from the baseline, spread evenly over baseline dates for planned value' : '') + ', with percent complete as reported in each update.');
       mth.push(LA + '-level reporting uses ' + groupDefText(M.gA) + '; ' + LB.toLowerCase() + ' reporting uses ' + groupDefText(M.gB) + '.');
+      if (M.risk && !M.risk.none) mth.push('The schedule risk analysis is a Monte Carlo simulation of ' + thou(M.risk.iter) + ' runs with remaining durations varied from ' + fnum(M.risk.u * 50) + '% shorter to ' + fnum(M.risk.u * 100) + '% longer (triangular distribution, correlation 0.3).');
       b10 += p('Methods: ' + mth.join(' '));
     }
     if (R.warnings.length) b10 += p('Data notes: ' + esc(R.warnings.join(' ')));
@@ -3793,8 +4131,13 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
     return {
       evBasis: $('f-evb').value, groupA: $('f-groupa').value || 'auto', groupB: $('f-groupb').value || 'auto',
       elemSource: $('f-elsrc').value || 'auto', elemText: $('f-elems').value, targets: chosenTargets(),
-      floatPaths: $('f-paths').value, pathEnd: $('f-pathend').value, nPaths: 10
+      floatPaths: $('f-paths').value, pathEnd: $('f-pathend').value, nPaths: 10, riskLevel: riskLevel()
     };
+  }
+  function riskLevel() { return (+$('f-risk').value || 0) * 0.05; }
+  function riskLabel() {
+    var u = riskLevel();
+    return u > 0 ? '−' + fnum(u * 50) + '% to +' + fnum(u * 100) + '%' : 'Off';
   }
   function sectionsChosen() {
     var o = {};
@@ -4156,7 +4499,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
   }
 
   /* ---------- settings wiring ---------- */
-  var PERSIST = ['f-by', 'f-crit', 'f-critfloat', 'f-near', 'f-look', 'f-hpd', 'f-rows', 'f-date', 'f-evb', 'f-labela', 'f-labelb', 'f-paths'];
+  var PERSIST = ['f-by', 'f-crit', 'f-critfloat', 'f-near', 'f-look', 'f-hpd', 'f-rows', 'f-date', 'f-evb', 'f-labela', 'f-labelb', 'f-paths', 'f-risk'];
   function patchHeader() {
     if (!state.R) return;
     var o = narrativeOptions();
@@ -4194,6 +4537,9 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
         settingsChanged();
       });
     });
+    $('f-risk-out').textContent = riskLabel();
+    $('f-risk').addEventListener('input', function () { $('f-risk-out').textContent = riskLabel(); });
+    $('f-risk').addEventListener('change', function () { store.set('f-risk', $('f-risk').value); $('f-risk-out').textContent = riskLabel(); settingsChanged(); });
     var elTimer = null;
     $('f-elems').addEventListener('input', function () { clearTimeout(elTimer); elTimer = setTimeout(function () { store.set('elemText', $('f-elems').value); settingsChanged(); }, 400); });
     $('btn-elreset').addEventListener('click', function () { $('f-elems').value = elementsText(DEFAULT_ELEMENTS); store.set('elemText', null); settingsChanged(); });
