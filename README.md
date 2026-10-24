@@ -22,11 +22,12 @@ Highlighted blanks mark the places that need the scheduler's input, such as caus
 ## Inputs
 
 - **Current update** (required), **previous update**, **baseline**, and any number of **earlier updates** for trends. Drop all the files at once and they are sorted by data date.
+- **Report ends at**: once the current update is loaded, pick the activity the report runs to by typing its Activity ID or name. Its forecast leads the summary, and the critical path, longest path, float paths and risk analysis run to it. By default the report then leaves out the work that doesn't lead to that activity (the activities that follow it or aren't linked to it), and the previous update, baseline and earlier updates are cut the same way so comparisons stay like for like; untick the box to keep the whole schedule. When the chosen activity has float and isn't the last in the schedule, its driving path is reported as its critical path. Left on automatic, the report covers the whole schedule.
 - Critical activities default to total float of 0 days or less and near-critical activities to 20 working days or less; both can be changed.
 - Earned value uses budgeted cost when the baseline is cost loaded, otherwise budgeted labour hours, otherwise original durations.
 - Bridge-level and work-package reporting use an activity code (for example "Structure" or "Work Package") when the schedule has one, otherwise WBS levels. Elements are matched by keywords in activity and WBS names, or by an activity code. All of these can be changed under **Report structure**.
-- Target dates are the activities with deadline constraints (for example Finish On or Before), the headline milestone and the project Must Finish By date, or a list you choose.
-- Float paths come from P6's multiple float path fields when the export has them; otherwise they are calculated from the activity dates and relationships.
+- Target dates are the activities with deadline constraints (for example Finish On or Before), the report's end activity and the project Must Finish By date, or a list you choose.
+- Float paths come from P6's multiple float path fields when the export has them and they end at the report's end activity; otherwise they are calculated from the activity dates and relationships.
 
 A fictional sample bridge project (a baseline and seven monthly updates) loads on first visit so you can see the result.
 

@@ -167,6 +167,7 @@ fieldset.targets { border: 1px solid var(--line); border-radius: 5px; padding: 8
 fieldset.targets legend { padding: 0 4px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
 label.inline { display: flex; align-items: flex-start; gap: 7px; font-size: 13.5px; line-height: 1.35; cursor: pointer; }
 label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
+.field input[type="checkbox"], .field input[type="radio"] { width: auto; min-width: 0; padding: 0; border: 0; background: none; }
 .tlist { display: grid; gap: 5px; margin-top: 8px; max-height: 260px; overflow: auto; padding-right: 2px; }
 .tlist .aid { font-family: var(--font-mono); font-size: 12px; }
 .tag-c { display: inline-block; margin-left: 2px; padding: 0 5px; border-radius: 3px; background: var(--warn-soft); color: var(--warn); font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -176,6 +177,29 @@ label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
 .range-field output { font-size: 13.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .range-field input[type="range"] { grid-column: 1 / -1; width: 100%; margin: 6px 0 0; accent-color: var(--accent); }
 .range-ticks { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); }
+
+/* report end activity: a combobox over the activity IDs in the current update */
+.field > .flabel { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.endpick { gap: 6px; }
+.endpick .hint { margin: 0; }
+.combo { position: relative; }
+.field .combo input { padding-right: 34px; text-overflow: ellipsis; }
+.field .combo input:disabled { background: var(--panel); color: var(--ink-3); cursor: not-allowed; }
+.combo-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--ink-3); cursor: pointer; }
+.combo-clear svg { width: 14px; height: 14px; }
+.combo-clear:hover { color: var(--ink); background: var(--accent-soft); }
+.combo-pop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; background: var(--surface); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow); max-height: min(340px, 55vh); overflow: auto; overscroll-behavior: contain; }
+.combo-list { list-style: none; margin: 0; padding: 4px; }
+.combo-opt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1px 9px; align-items: baseline; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+.combo-opt:hover { background: var(--panel); }
+.combo-opt.is-active { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.co-id { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.co-auto .co-id { font-family: var(--font-ui); font-size: 13.5px; font-weight: 600; }
+.co-name { font-size: 13.5px; line-height: 1.3; overflow-wrap: anywhere; }
+.co-meta { grid-column: 2 / -1; font-size: 12px; color: var(--ink-3); }
+.combo-opt[aria-selected="true"]::after { content: "✓"; grid-column: 3; grid-row: 1; color: var(--accent); font-weight: 700; }
+.combo-note { margin: 0; padding: 6px 12px 8px; font-size: 12.5px; color: var(--ink-3); border-top: 1px solid var(--line); }
+.end-info { margin: 0; font-size: 13px; color: var(--ink); }
 
 /* ---------- stage ---------- */
 .notice { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; padding: 10px 13px; border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface); font-size: 14px; }
@@ -361,7 +385,20 @@ label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
           <label class="field"><span>Update No.</span><input id="f-upd" type="text" autocomplete="off"></label>
           <label class="field"><span>Period start</span><input id="f-period" type="date"></label>
           <label class="field span2"><span>Prepared by</span><input id="f-by" type="text" placeholder="Name, role" autocomplete="name"></label>
-          <label class="field span2"><span>Headline milestone</span><select id="f-headline"></select></label>
+          <div class="field span2 endpick">
+            <label for="f-end" class="flabel">Report ends at</label>
+            <div class="combo" id="c-end">
+              <input id="f-end" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="f-end-list" aria-describedby="f-end-help" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Load the current update first" disabled>
+              <button type="button" class="combo-clear" id="f-end-clear" aria-label="Clear the end activity and choose it automatically" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L6.94 8l-3.72 3.72a.75.75 0 1 0 1.06 1.06L8 9.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L9.06 8l3.72-3.72a.75.75 0 0 0-1.06-1.06L8 6.94 4.28 3.22Z"/></svg></button>
+              <div class="combo-pop" id="f-end-pop" hidden>
+                <ul class="combo-list" id="f-end-list" role="listbox" aria-label="Activities in the current update"></ul>
+                <p class="combo-note" id="f-end-note" hidden></p>
+              </div>
+            </div>
+            <label class="inline" id="w-endscope" hidden><input type="checkbox" id="f-endscope" checked> Leave out work that doesn’t lead to this activity</label>
+            <p class="end-info" id="f-end-info" hidden></p>
+            <p class="hint" id="f-end-help">Type an activity ID or name. The report is written to this activity: its date leads the summary, and the critical path, float paths and risk analysis run to it.</p>
+          </div>
         </div>
       </section>
 
@@ -437,7 +474,7 @@ label.inline input { margin-top: 2px; accent-color: var(--accent); flex: none; }
           <div class="span2 row-end"><button type="button" class="link-btn" id="btn-elreset">Restore the default elements</button></div>
           <fieldset class="field span2 targets">
             <legend>Target dates</legend>
-            <label class="inline"><input type="checkbox" id="f-tauto" checked> Choose automatically (deadline constraints, headline milestone, Must Finish By)</label>
+            <label class="inline"><input type="checkbox" id="f-tauto" checked> Choose automatically (deadline constraints, the report end activity, Must Finish By)</label>
             <div class="tlist" id="f-tlist"></div>
           </fieldset>
         </div>
@@ -878,7 +915,9 @@ function schedOptions(T, projId) {
     lagCal: /succ/.test(lc) ? 'succ' : /24/.test(lc) ? '24h' : /proj/.test(lc) ? 'proj' : 'pred',
     progressOverride: r.sched_progress_override === 'Y' || r.sched_retained_logic === 'N',
     ssFromEarly: r.sched_lag_early_start_flag === 'Y',
-    known: !!(T.SCHEDOPTIONS && T.SCHEDOPTIONS.length)
+    known: !!(T.SCHEDOPTIONS && T.SCHEDOPTIONS.length),
+    // the activity P6's multiple float paths were calculated to, when the export says
+    mfpEnd: String(r.key_activity_for_multiple_longest_paths || '').trim() || null
   };
 }
 
@@ -958,6 +997,74 @@ function latestFinish(m) {
     if (!best || t.finish > best.finish || (t.finish === best.finish && ((t.isMs && !best.isMs) || (!t.succs.length && best.succs.length)))) best = t;
   });
   return best;
+}
+
+/* ---------- report scope: the work that leads to one activity ---------- */
+/* The activity and everything that precedes it through any chain of
+   relationships, completed work included. */
+function traceUpstream(t) {
+  var seen = new Set([t]), stack = [t];
+  while (stack.length) {
+    var x = stack.pop();
+    for (var i = 0; i < x.preds.length; i++) { var p = x.preds[i].pred; if (!seen.has(p)) { seen.add(p); stack.push(p); } }
+  }
+  return seen;
+}
+/* A copy of a model holding only the activities in keep. Activities are
+   shared with the full model, so their successor lists still show the
+   logic that leaves the scope. */
+function cutModel(m, keep, scope) {
+  var tasks = m.tasks.filter(function (t) { return keep.has(t); }), byCode = new Map();
+  m.byCode.forEach(function (t, c) { if (keep.has(t)) byCode.set(c, t); });
+  // relationships into the kept activities: in the current update every predecessor is kept;
+  // in another version a predecessor outside the scope shows up as removed logic
+  var rels = m.rels.filter(function (r) { return keep.has(r.succ); });
+  var tot = { cost: 0, costAct: 0, costRem: 0, lab: 0, labAct: 0, labRem: 0, eq: 0, eqAct: 0, eqRem: 0, assignments: 0, expenses: 0 }, depth = 0, types = new Map();
+  (m.codeTypes || []).forEach(function (c) { types.set(c.name, { name: c.name, scope: c.scope, seq: c.seq, values: new Map(), count: 0 }); });
+  tasks.forEach(function (t) {
+    tot.cost += t.totBud; tot.costAct += t.totAct; tot.costRem += t.totRem;
+    tot.lab += t.labBud; tot.labAct += t.labAct; tot.labRem += t.labRem; tot.eq += t.eqBud; tot.eqAct += t.eqAct; tot.eqRem += t.eqRem;
+    tot.assignments += t.assign.length; tot.expenses += t.expenses.length;
+    if (t.wbsNode && t.wbsNode.level > depth) depth = t.wbsNode.level;
+    Object.keys(t.codes).forEach(function (nm) {
+      var ty = types.get(nm), v = t.codes[nm];
+      if (!ty) return;
+      ty.count++;
+      var vv = ty.values.get(v.short);
+      if (!vv) ty.values.set(v.short, vv = { short: v.short, name: v.name, seq: v.seq, count: 0 });
+      vv.count++;
+    });
+  });
+  var out = {};
+  Object.keys(m).forEach(function (k) { if (k.charAt(0) !== '_') out[k] = m[k]; });   // caches stay with the full model
+  out.tasks = tasks; out.byCode = byCode; out.rels = rels; out.totals = tot; out.wbsDepth = depth;
+  out.codeTypes = Array.from(types.values()).filter(function (c) { return c.count > 0; });
+  out.scope = scope; out.full = m;
+  return out;
+}
+/* Cut the current update, and each other version, to the work leading to
+   the activity with this ID. Other versions keep the same activities (by
+   ID), plus any deleted since that led to it, so comparisons stay fair. */
+function scopeToActivity(cur, others, code) {
+  var X = cur.byCode.get(code);
+  if (!X || !X.normal) return null;
+  var keep = traceUpstream(X), codes = new Set(), total = 0, n = 0;
+  keep.forEach(function (t) { codes.add(t.code); });
+  cur.tasks.forEach(function (t) { if (t.normal) { total++; if (keep.has(t)) n++; } });
+  var lf = latestFinish(cur);
+  var info = {
+    code: X.code, t: X, n: n, total: total, excluded: total - n, noPreds: !X.preds.length,
+    isLast: !lf || lf === X || (X.finish != null && lf.finish != null && X.finish >= lf.finish), mfb: cur.project.mfb
+  };
+  return {
+    cur: cutModel(cur, keep, info), info: info,
+    others: (others || []).map(function (m) {
+      if (!m) return m;
+      var X2 = m.byCode.get(code), up = X2 ? traceUpstream(X2) : null, k2 = new Set();
+      m.tasks.forEach(function (t) { if (codes.has(t.code) || (up && up.has(t) && !cur.byCode.has(t.code))) k2.add(t); });
+      return cutModel(m, k2, info);
+    })
+  };
 }
 
 function compareModels(cur, old) {
@@ -1049,9 +1156,21 @@ function analyze(cur, prev, bl, settings) {
   }
 
   /* critical path */
+  // SC: the report runs to one activity, and cur holds only the work leading to it
+  var SC = cur.scope || null;
   var CS = criticalSet(cur, s);
+  var H = SC ? SC.t : pickHeadline(cur, s.headline);
+  // an end activity short of the project finish that is not itself critical (or,
+  // for the longest path, not on it): its critical path is its driving path
+  var hCrit = !CS.fallback && (CS.label.kind === 'longest' ? H.longest : CS.set.has(H.code));
+  if (SC && !SC.isLast && H.status !== 'C' && !hCrit && typeof drivingSet === 'function') {
+    var dv = drivingSet(cur, H.code);
+    if (dv && dv.size) {
+      var other = inc.filter(function (t) { return !CS.fallback && CS.set.has(t.code) && !dv.has(t.code); }).sort(byStart);
+      CS = { set: dv, label: CS.label, fallback: 'driving', otherCrit: other };
+    }
+  }
   var critList = inc.filter(function (t) { return CS.set.has(t.code); }).sort(byStart);
-  var H = pickHeadline(cur, s.headline);
   function msInfo(t) {
     var p = prev && prev.byCode.get(t.code), b = bl && bl.byCode.get(t.code), fc = finishConstraint(t);
     return {
@@ -1062,9 +1181,13 @@ function analyze(cur, prev, bl, settings) {
     };
   }
   R.headline = H ? msInfo(H) : null;
-  var lastT = latestFinish(cur);
+  R.scope = SC;
+  // in a scoped report the end activity is the finish; the project's Must Finish By
+  // date only applies when that activity is also the last in the schedule
+  var lastT = SC ? H : latestFinish(cur);
   R.finish = lastT ? msInfo(lastT) : null;
-  R.mfb = P.mfb != null ? { date: P.mfb, var: lastT ? calDiff(P.mfb, lastT.finish) : null } : null;
+  R.mfb = P.mfb != null && (!SC || SC.isLast) ? { date: P.mfb, var: lastT ? calDiff(P.mfb, lastT.finish) : null } : null;
+  if (SC && SC.noPreds) R.warnings.push(H.name + ' (' + H.code + ') has no predecessors, so this report covers only that activity.');
   if (H && H.status !== 'C' && H.finish != null) {
     R.cpl = workdays(H.cal || P.cal, ddDay, dayNum(H.finish));
     R.cpli = R.cpl > 0 && H.tf != null ? (R.cpl + H.tf) / R.cpl : null;
@@ -1074,11 +1197,12 @@ function analyze(cur, prev, bl, settings) {
   var wbsSeq = [];
   chain.forEach(function (t) { if (!t.isMs && t.wbsTop && wbsSeq[wbsSeq.length - 1] !== t.wbsTop) wbsSeq.push(t.wbsTop); });
   R.crit = {
-    set: CS.set, label: CS.label, fallback: CS.fallback, list: critList, chain: chain, wbsSeq: wbsSeq, end: endT || null,
+    set: CS.set, label: CS.label, fallback: CS.fallback, otherCrit: CS.otherCrit || [], list: critList, chain: chain, wbsSeq: wbsSeq, end: endT || null,
     minTf: critList.reduce(function (m, t) { return t.tf != null && (m == null || t.tf < m) ? t.tf : m; }, null)
   };
   if (cmp) {
-    var CS0 = criticalSet(cmp, s), was = CS0.set;
+    var dv0 = CS.fallback === 'driving' ? drivingSet(cmp, H.code) : null;
+    var CS0 = dv0 ? { set: dv0, label: CS.label, fallback: 'driving' } : criticalSet(cmp, s), was = CS0.set;
     R.crit.cmp = {
       label: CS0.label, fallback: CS0.fallback, count: was.size,
       joined: critList.filter(function (t) { return !was.has(t.code); }),
@@ -1456,6 +1580,33 @@ function floatPaths(m, endT, n) {
     grow(c.v.p, c.k, c.v.s);
   }
   return { paths: paths, end: endT, assigned: assigned };
+}
+/* IDs of the remaining activities on the driving path to one activity (float
+   path 1), limited to the activities in the model. */
+function drivingSet(m, code) {
+  var t = m.byCode.get(code);
+  if (!s13Inc(t)) return null;
+  var p = floatPaths(m, t, 1).paths[0], st = new Set();
+  if (p) p.list.forEach(function (a) { if (m.byCode.get(a.code) === a) st.add(a.code); });
+  return st;
+}
+/* Whether the P6 float paths in the export end at this activity: the key
+   activity in the scheduling options, or else the activity is on path 1 and
+   none of its successors is. */
+function p6PathsEndAt(m, t) {
+  var key = m.project.sched && m.project.sched.mfpEnd;
+  if (key) return key === t.id;
+  return t.fp === 1 && !t.succs.some(function (r) { return r.succ.fp === 1; });
+}
+/* The remaining longest path: P6's flags when the export has them (in a
+   scoped report only when the end activity is on it), otherwise the driving
+   path traced to the end activity. */
+function longestPathOf(m, end, scoped) {
+  var flagged = m.tasks.filter(function (t) { return s13Inc(t) && t.longest && m.byCode.get(t.code) === t; }).sort(byStart);
+  var e = s13Inc(end) ? end : null;
+  if (flagged.length && (!scoped || (e && e.longest))) return { source: 'p6', list: flagged, end: e };
+  if (e) { var p = floatPaths(m, e, 1).paths[0]; return { source: 'calc', list: p ? p.list.filter(function (a) { return m.byCode.get(a.code) === a; }) : [], end: e }; }
+  return { source: 'none', list: [], end: null };
 }
 function p6FloatPaths(m, n) {
   var by = new Map();
@@ -1939,10 +2090,11 @@ function analyzeMonthly(R, ctx, settings) {
   var cur = R.cur, near = +s.nearCrit || 20, DD = cur.project.dataDate;
   var M = {};
   M.series = buildSeries(cur, R.prev, R.bl, ctx.hist);
-  var cs = s;
+  var cs = s, drvCode = R.crit.fallback === 'driving' && R.headline ? R.headline.t.code : null;
   M.snapshots = M.series.map(function (sn) {
     var m = sn.m, inc = m.tasks.filter(s13Inc), H = R.headline ? m.byCode.get(R.headline.t.code) : null;
-    var CS = { set: critStrict(m, cs) };
+    // count critical activities the same way as this update: the driving path when that was used
+    var CS = { set: (drvCode && drivingSet(m, drvCode)) || critStrict(m, cs) };
     var withTf = inc.filter(function (t) { return t.tf != null; });
     var lf = latestFinish(m), w = 0, e = 0;
     m.tasks.forEach(function (t) { if (t.normal && t.od > 0) { w += t.od; e += t.od * t.pct / 100; } });
@@ -1975,20 +2127,20 @@ function analyzeMonthly(R, ctx, settings) {
     M.elemMatrix = groupRows(cur, R.bl, function (t) { var e = elementOfTask(t, ed), a = kA(t); return e >= 0 ? { key: 'E' + e + '|' + a.key, label: a.label, order: a.order, el: e, g: a.key } : null; }, crit, near, M.evm.byElA);
   }
   // longest path and float paths
-  var inc = cur.tasks.filter(s13Inc), flagged = inc.filter(function (t) { return t.longest; }).sort(byStart);
+  var inc = cur.tasks.filter(s13Inc), SC = R.scope || null;
   var finT = R.finish && s13Inc(R.finish.t) ? R.finish.t : null;
-  if (flagged.length) M.longest = { source: 'p6', list: flagged, end: finT };
-  else if (finT) { var lp = floatPaths(cur, finT, 1); M.longest = { source: 'calc', list: lp.paths[0] ? lp.paths[0].list : [], end: finT }; }
-  else M.longest = { source: 'none', list: [], end: null };
+  M.longest = longestPathOf(cur, finT, !!SC);
   var endT = s.pathEnd && cur.byCode.get(s.pathEnd) && s13Inc(cur.byCode.get(s.pathEnd)) ? cur.byCode.get(s.pathEnd) : (R.headline && s13Inc(R.headline.t) ? R.headline.t : finT);
   var p6 = s.floatPaths !== 'calc' ? p6FloatPaths(cur, s.nPaths || 10) : null;
+  // a chosen end activity needs float paths to that activity, not to wherever P6 calculated them
+  if (p6 && p6.length && endT && (SC || s.headline || s.pathEnd) && !p6PathsEndAt(cur, endT)) { p6 = null; M.p6PathsElsewhere = true; }
   if (p6 && p6.length) M.paths = { source: 'p6', paths: p6, end: null };
   else if (endT) { var fp = floatPaths(cur, endT, s.nPaths || 10); M.paths = { source: 'calc', paths: fp.paths, end: endT }; }
   else M.paths = { source: 'none', paths: [], end: null };
   // longest path changes against the comparison version
   if (R.cmp && M.longest.list.length) {
-    var cmpInc = R.cmp.tasks.filter(s13Inc), cf = cmpInc.filter(function (t) { return t.longest; });
-    var was = new Set((cf.length ? cf : (function () { var e2 = latestFinish(R.cmp); return e2 && s13Inc(e2) ? (floatPaths(R.cmp, e2, 1).paths[0] || { list: [] }).list : []; })()).map(function (t) { return t.code; }));
+    var lw = longestPathOf(R.cmp, SC ? R.cmp.byCode.get(SC.code) : latestFinish(R.cmp), !!SC);
+    var was = new Set(lw.list.map(function (t) { return t.code; }));
     var now = new Set(M.longest.list.map(function (t) { return t.code; }));
     M.longest.joined = M.longest.list.filter(function (t) { return !was.has(t.code); });
     M.longest.left = Array.from(was).map(function (c) { return cur.byCode.get(c); }).filter(function (t) { return t && s13Inc(t) && !now.has(t.code); });
@@ -2574,6 +2726,10 @@ function buildNarrative(R, M, o) {
   var S = o.sections || {};
   var on = function (k) { return S[k] !== false; };
   var cur = R.cur, prev = R.prev, bl = R.bl, H = R.headline, P = R.project;
+  var SCP = R.scope || null;   // set when the report runs to one activity and covers only the work leading to it
+  var hlTerm = SCP || (R.s && R.s.headline) ? 'the report’s end activity' : 'the headline milestone';
+  // where target dates come from; a scoped report that stops short of the project finish does not use its Must Finish By date
+  var tgSources = SCP && !SCP.isLast ? ' and ' + hlTerm : ', ' + hlTerm + ' and the project Must Finish By date';
   var cmpWord = R.cmpKind === 'prev' ? 'the previous update' : 'the baseline';
   var sinceWord = R.cmpKind === 'prev' ? 'this period' : 'since the baseline';
   var fcVerb = R.cmpKind === 'prev' ? 'forecast' : 'planned';
@@ -2687,7 +2843,7 @@ function buildNarrative(R, M, o) {
     if (pl) {
       var critMissed = pl.startMissed.filter(function (x) { return crit.has(x.t.code); });
       if (critMissed.length) issues.push({ sev: 2, html: joinAnd(critMissed.slice(0, 3).map(function (x) { return act(x.t); }).concat(critMissed.length > 3 ? [plural(critMissed.length - 3, 'other activity', 'other activities')] : [])) + (critMissed.length === 1 ? ' is' : ' are') + ' critical and did not start as ' + fcVerb + ' in ' + cmpWord + '.' });
-      if (pl.finishCount && pl.finishHit < pl.finishCount) issues.push({ sev: 2, html: Num(pl.finishHit) + ' of the ' + plural(pl.finishCount, 'activity', 'activities') + ' ' + fcVerb + ' to finish by this data date ' + (pl.finishHit === 1 ? 'was' : 'were') + ' completed (' + pctTxt(100 * pl.finishHit / pl.finishCount) + ').' });
+      if (pl.finishCount && pl.finishHit < pl.finishCount) issues.push({ sev: 2, html: pl.finishCount === 1 ? 'The one activity ' + fcVerb + ' to finish by this data date was not completed.' : !pl.finishHit ? 'None of the ' + plural(pl.finishCount, 'activity', 'activities') + ' ' + fcVerb + ' to finish by this data date were completed.' : Num(pl.finishHit) + ' of the ' + plural(pl.finishCount, 'activity', 'activities') + ' ' + fcVerb + ' to finish by this data date ' + (pl.finishHit === 1 ? 'was' : 'were') + ' completed (' + pctTxt(100 * pl.finishHit / pl.finishCount) + ').' });
     }
     if (R.oos.length) issues.push({ sev: 2, html: Plural(R.oos.length, 'relationship shows', 'relationships show') + ' out-of-sequence progress.' });
     if (R.changes && R.changes.actuals.length) issues.push({ sev: 2, html: 'Previously reported actual dates were changed on ' + plural(new Set(R.changes.actuals.map(function (a) { return a.t.code; })).size, 'activity', 'activities') + '.' });
@@ -2723,22 +2879,22 @@ function buildNarrative(R, M, o) {
   /* ---------- sentences reused in several sections ---------- */
   function headlineSentence() {
     if (!H) return 'No milestones or activities with forecast dates were found.';
-    var t = H.t, s;
+    var t = H.t, s, noun = t.isMs ? 'milestone' : 'activity';
     if (H.done) {
-      s = act(t) + ' was achieved on ' + D(H.date) + '.';
+      s = act(t) + (t.isMs ? ' was achieved on ' : ' finished on ') + D(H.date) + '.';
       if (H.varBl != null) s += H.varBl === 0 ? ' This matched the baseline date.' : ' This was ' + cd(H.varBl) + (H.varBl > 0 ? ' later' : ' earlier') + ' than the baseline date of ' + D(H.blDate) + '.';
       return s;
     }
-    s = act(t) + ' is forecast for ' + D(H.date) + '.';
+    s = act(t) + (t.isMs ? ' is forecast for ' : ' is forecast to finish on ') + D(H.date) + '.';
     var cl = [];
     if (H.varPrev != null && !H.prevDone) cl.push(H.varPrev === 0 ? 'unchanged from the previous update' : cd(H.varPrev) + (H.varPrev > 0 ? ' later' : ' earlier') + ' than the previous update forecast of ' + D(H.prevDate));
     if (H.varBl != null) cl.push(H.varBl === 0 ? 'on the baseline date' : cd(H.varBl) + (H.varBl > 0 ? ' later' : ' earlier') + ' than the baseline date of ' + D(H.blDate));
     if (cl.length) s += ' This is ' + joinAnd(cl) + '.';
     if (H.constraint) {
       var lbl = CSTR_LABEL[H.constraint.type] || 'deadline';
-      if (H.varCstr > 0) s += ' The milestone has a ' + esc(lbl) + ' constraint of ' + D(H.constraint.date) + ', which the forecast misses by ' + cd(H.varCstr) + '; total float on the milestone is ' + wd(H.tf) + '.';
-      else s += ' The milestone has a ' + esc(lbl) + ' constraint of ' + D(H.constraint.date) + (H.tf != null ? ', which the forecast meets with ' + wd(H.tf) + ' of total float.' : '.');
-    } else if (H.tf != null && H.tf < 0) s += ' Total float on the milestone is ' + wd(H.tf) + '.';
+      if (H.varCstr > 0) s += ' The ' + noun + ' has a ' + esc(lbl) + ' constraint of ' + D(H.constraint.date) + ', which the forecast misses by ' + cd(H.varCstr) + '; total float on the ' + noun + ' is ' + wd(H.tf) + '.';
+      else s += ' The ' + noun + ' has a ' + esc(lbl) + ' constraint of ' + D(H.constraint.date) + (H.tf != null ? ', which the forecast meets with ' + wd(H.tf) + ' of total float.' : '.');
+    } else if (H.tf != null && H.tf < 0) s += ' Total float on the ' + noun + ' is ' + wd(H.tf) + '.';
     return s;
   }
   function finishSentence() {
@@ -2755,14 +2911,21 @@ function buildNarrative(R, M, o) {
   }
   function critPathSentence(detail) {
     var C = R.crit;
-    if (!R.counts.A && !R.counts.N) return 'All activities are complete, so there is no remaining critical path.';
+    if (!R.counts.A && !R.counts.N) return SCP ? 'All the work leading to ' + act(SCP.t) + ' is complete, so there is no remaining critical path.' : 'All activities are complete, so there is no remaining critical path.';
     if (!C.list.length) return 'No critical path could be identified from the float values in this schedule.';
     var first = C.chain[0] || C.list[0], end = C.end;
     var s = C.fallback === 'longest' ? (detail ? 'The longest path ' : 'No activities are critical under the float limit, so the longest path is reported. It ') : C.fallback === 'lowest' ? 'The lowest-float path ' : 'The critical path ';
     var st = first.status === 'A' ? ', which is in progress' + (detail ? ' (' + Math.round(first.pct) + '% complete, ' + wd(first.rd) + ' remaining)' : '') + ',' : (detail ? ', forecast to start on ' + D(first.start) + ',' : '');
-    var through = C.wbsSeq.length > 1 ? ' through ' + esc(joinAnd(C.wbsSeq.slice(first.wbsTop === C.wbsSeq[0] ? 1 : 0))) : '';
+    var seq = C.wbsSeq.filter(function (w, i, all) { return all.indexOf(w) === i; });
+    var through = seq.length > 1 ? ' through ' + esc(joinAnd(seq.slice(first.wbsTop === seq[0] ? 1 : 0))) : '';
     if (through === ' through ') through = '';
     if (!through && st) st = st.slice(0, -1);
+    if (C.fallback === 'driving') {
+      // the end activity has float, so its critical path is the chain that drives it
+      var d0 = first === end ? 'is ' + act(first) + ' alone' : 'runs from ' + act(first) + st + through + ' to ' + (detail ? act(end) + (end.finish != null ? ' on ' + D(end.finish) : '') : 'it');
+      s = (detail ? 'The driving path ' : act(end) + ' is not critical' + (end.tf != null ? ': it has ' + wd(end.tf) + ' of total float' : '') + '. Its driving path ') + d0 + '.';
+      return s + ' It contains ' + plural(C.list.length, 'activity', 'activities') + '.';
+    }
     s += (first === end ? 'consists of ' + act(first) : 'runs from ' + act(first) + st + through + ' to ' + act(end)) + (detail && end && end.finish != null ? ' on ' + D(end.finish) : '') + '.';
     s += ' It contains ' + plural(C.list.length, 'activity', 'activities') + (C.minTf != null ? ' with total float as low as ' + wd(C.minTf) : '') + '.';
     return s;
@@ -2803,6 +2966,8 @@ function buildNarrative(R, M, o) {
   if (num.summary) {
     var sub1 = subs('summary'), b = '';
     var intro = 'This report sets out the status of the ' + esc(title) + ' schedule at the data date of ' + D(R.dataDate) + ' and covers progress from ' + D(R.periodStart) + ' to ' + D(R.dataDate) + '.';
+    if (SCP) intro += ' It runs to ' + act(SCP.t) + ' and covers ' + (SCP.n > 1 ? 'that ' + (SCP.t.isMs ? 'milestone' : 'activity') + ' and the ' + plural(SCP.n - 1, 'activity', 'activities') + ' that lead to it' : 'only that ' + (SCP.t.isMs ? 'milestone' : 'activity')) +
+      (SCP.excluded ? '; the other ' + plural(SCP.excluded, 'activity', 'activities') + ' in the schedule follow it or do not lead to it, and are left out' : '') + '.';
     if (prev && bl) intro += ' It compares this update with the previous update (data date ' + D(prev.project.dataDate) + ') and the baseline (data date ' + D(bl.project.dataDate) + ').';
     else if (prev) intro += ' It compares this update with the previous update (data date ' + D(prev.project.dataDate) + ').';
     else if (bl) intro += ' It compares this update with the baseline (data date ' + D(bl.project.dataDate) + ').';
@@ -2812,15 +2977,16 @@ function buildNarrative(R, M, o) {
     b += sub1('Progress to date');
     var c = R.counts, pr = R.progress, prog = '';
     if (evOk && E.cur) {
-      if (E.hasBaseline && E.cur.pv != null) prog += 'By earned value, the project is ' + pct1(E.cur.evPct) + ' complete against ' + pct1(E.cur.pvPct) + ' planned at the data date (SPI ' + (E.cur.spi != null ? E.cur.spi.toFixed(2) : '—') + ', SV% ' + (E.cur.svPct != null ? sgn(E.cur.svPct) + '%' : '—') + ', measured on ' + EVF.what + ').';
-      else prog += 'By earned value, the project is ' + pct1(E.cur.evPct) + ' complete, measured on ' + EVF.what + '. Planned value needs the baseline schedule, so SPI is not reported.';
+      var evSubj = SCP ? 'the work leading to ' + esc(SCP.t.name) : 'the project';
+      if (E.hasBaseline && E.cur.pv != null) prog += 'By earned value, ' + evSubj + ' is ' + pct1(E.cur.evPct) + ' complete against ' + pct1(E.cur.pvPct) + ' planned at the data date (SPI ' + (E.cur.spi != null ? E.cur.spi.toFixed(2) : '—') + ', SV% ' + (E.cur.svPct != null ? sgn(E.cur.svPct) + '%' : '—') + ', measured on ' + EVF.what + ').';
+      else prog += 'By earned value, ' + evSubj + ' is ' + pct1(E.cur.evPct) + ' complete, measured on ' + EVF.what + '. Planned value needs the baseline schedule, so SPI is not reported.';
       prog += ' ';
     }
     if (!c.C && !c.A) prog += 'No progress has been recorded: none of the ' + plural(c.total, 'activity', 'activities') + ' has started.';
     else {
       prog += 'Overall, ' + fnum(c.C) + ' of ' + plural(c.total, 'activity', 'activities') + ' (' + pctTxt(R.pctCount) + ') ' + (c.C === 1 ? 'is' : 'are') + ' complete, ' + (c.A ? fnum(c.A) + (c.A === 1 ? ' is' : ' are') : 'none are') + ' in progress and ' + (c.N ? fnum(c.N) + (c.N === 1 ? ' has' : ' have') + ' not started.' : 'all have started.');
       if (R.pctDuration != null) prog += ' Duration-weighted progress is ' + pctTxt(R.pctDuration) + (R.pctPlanned != null ? ', against approximately ' + pctTxt(R.pctPlanned) + ' planned in the baseline.' : '.');
-      prog += ' ' + (pr.started.length || pr.completed.length ? 'During the period, ' + plural(pr.started.length, 'activity', 'activities') + ' started and ' + fnum(pr.completed.length) + (pr.completed.length === 1 ? ' was' : ' were') + ' completed.' : 'No activities started or finished during the period.');
+      prog += ' ' + (pr.started.length || pr.completed.length ? 'During the period, ' + (pr.started.length ? plural(pr.started.length, 'activity', 'activities') + ' started and ' + (pr.completed.length ? fnum(pr.completed.length) + (pr.completed.length === 1 ? ' was' : ' were') : 'none was') + ' completed.' : plural(pr.completed.length, 'activity was', 'activities were') + ' completed and none started.') : 'No activities started or finished during the period.');
     }
     b += p(prog) + p(critPathSentence(false));
     b += sub1('Milestones achieved');
@@ -2993,6 +3159,12 @@ function buildNarrative(R, M, o) {
     else def = 'Critical activities are ' + (L3.source === 'project' ? 'defined by the P6 project setting as those' : 'those') + ' with total float of ' + wd(L3.days) + ' or less; near-critical activities have total float above that and up to ' + wd(near) + '.';
     if (C3.fallback === 'longest') def += ' No activities met that definition at this data date, so the longest path calculated by P6 is reported instead.';
     if (C3.fallback === 'lowest') def += ' No activities met that definition, so the activities with the lowest total float (' + wd(L3.lowest) + ') are reported.';
+    if (C3.fallback === 'driving') {
+      def += ' ' + act(H.t) + (L3.kind === 'longest' && !C3.label.lowest ? ' is not on the longest path' : ' is not critical' + (H.tf != null ? ' (it has ' + wd(H.tf) + ' of total float)' : '')) + ', so its critical path is reported as its driving path: the chain of activities with no float relative to it, traced through the relationships.';
+      var oc = C3.otherCrit || [];
+      if (oc.length) def += ' ' + (oc.length === 1 ? 'One other activity' : 'Another ' + plural(oc.length, 'activity', 'activities')) + ' leading to it ' + (oc.length === 1 ? 'is' : 'are') + ' critical to other dates: ' + joinAnd(oc.slice(0, 4).map(act).concat(oc.length > 4 ? [plural(oc.length - 4, 'other')] : [])) + '.';
+    }
+    if (SCP) def = 'This section covers the work leading to ' + act(SCP.t) + '. ' + def;
     b3 += p(def);
     var s3 = critPathSentence(true);
     if (C3.minTf != null && C3.minTf < -0.05) {
@@ -3003,14 +3175,14 @@ function buildNarrative(R, M, o) {
     if (R.cpl != null && H && C3.end === H.t) s3 += ' There are ' + plural(R.cpl, 'working day') + ' between the data date and the forecast date of ' + esc(H.t.name) + '.';
     b3 += p(s3);
     if (C3.list.length) b3 += table([['ID', 'id'], ['Activity', 'txt'], ['WBS', 'txt'], ['Start', 'date'], ['Finish', 'date'], ['Rem. dur.', 'num'], ['Total float', 'num']],
-      C3.list.map(function (t) { return [idCell(t.code), esc(t.name), esc(t.wbsTop), ds(t), df(t), days(t.rd), tfCell(t)]; }), 'critical activities');
+      C3.list.map(function (t) { return [idCell(t.code), esc(t.name), esc(t.wbsTop), ds(t), df(t), days(t.rd), tfCell(t)]; }), C3.fallback === 'driving' ? 'activities on the driving path' : 'critical activities');
     // 3.2 longest path
     b3 += sub3('Longest path');
     var LP = M ? M.longest : null;
     if (!LP || !LP.list.length) b3 += p('There is no remaining longest path: ' + (R.counts.A || R.counts.N ? 'the path could not be traced from the data.' : 'all activities are complete.'));
     else {
       var lpEnd = LP.list[LP.list.length - 1], lpFirst = LP.list[0];
-      b3 += p((LP.source === 'p6' ? 'The longest path, as calculated by P6,' : 'The longest path, traced by this report through the driving relationships to ' + act(LP.end) + ',') + ' runs from ' + act(lpFirst) + (lpFirst.status === 'A' ? ' (in progress)' : ' (forecast to start ' + D(lpFirst.start) + ')') + ' to ' + act(lpEnd) + ' on ' + D(lpEnd.finish) + '. It has ' + plural(LP.list.length, 'remaining activity', 'remaining activities') + '. The longest path is the chain of activities that sets the project finish; its float can differ from the critical path’s when deadlines constrain other activities.');
+      b3 += p((LP.source === 'p6' ? 'The longest path, as calculated by P6,' : 'The longest path, traced by this report through the driving relationships to ' + act(LP.end) + ',') + ' runs from ' + act(lpFirst) + (lpFirst.status === 'A' ? ' (in progress)' : ' (forecast to start ' + D(lpFirst.start) + ')') + ' to ' + act(lpEnd) + ' on ' + D(lpEnd.finish) + '. It has ' + plural(LP.list.length, 'remaining activity', 'remaining activities') + '. The longest path is the chain of activities that sets ' + (SCP ? 'the forecast date of ' + esc(SCP.t.name) : 'the project finish') + '; its float can differ from the critical path’s when deadlines constrain other activities.');
       b3 += table([['ID', 'id'], ['Activity', 'txt'], ['Start', 'date'], ['Finish', 'date'], ['Rem. dur.', 'num'], ['Total float', 'num']], LP.list.map(function (t) { return [idCell(t.code), esc(t.name), ds(t), df(t), days(t.rd), tfCell(t)]; }), 'activities on the longest path');
     }
     // 3.3 near-critical
@@ -3097,7 +3269,7 @@ function buildNarrative(R, M, o) {
     if (!FP || !FP.paths.length) b3 += p('Float paths could not be calculated: there is no remaining work driving ' + (H ? act(H.t) : 'the project finish') + '.');
     else {
       if (FP.source === 'p6') b3 += p('The first ' + plural(FP.paths.length, 'float path') + ' below are as calculated by P6 (multiple float path analysis stored in the export). Path 1 is the most critical.');
-      else b3 += p('The first ' + plural(FP.paths.length, 'float path') + ' to ' + act(FP.end) + ' were calculated by this report from the activity dates and relationships. Path 1 is the driving path; each later path is the chain of activities that feeds the paths already found with the next lowest relationship float, so “Float vs path 1” is how many working days that chain could slip before it drives ' + esc(FP.end.name) + '.');
+      else b3 += p('The first ' + plural(FP.paths.length, 'float path') + ' to ' + act(FP.end) + ' were calculated by this report from the activity dates and relationships' + (M.p6PathsElsewhere ? ' (the export also holds P6 float paths, but they end at a different activity)' : '') + '. Path 1 is the driving path; each later path is the chain of activities that feeds the paths already found with the next lowest relationship float, so “Float vs path 1” is how many working days that chain could slip before it drives ' + esc(FP.end.name) + '.');
       b3 += table([['Path', 'num'], ['Activities', 'num'], ['First activity', 'txt'], ['Last activity', 'txt'], ['Finish', 'date'], ['Float vs path 1', 'num'], ['Lowest TF', 'num'], ['Feeds into', 'txt']],
         FP.paths.map(function (pa) { var la = pa.list[pa.list.length - 1]; return [String(pa.no), fnum(pa.list.length), pa.list[0] ? actCell(pa.list[0]) : '—', la ? actCell(la) : '—', D(pa.finish), pa.pf != null ? fnum(pa.pf) : '—', fnum(pa.minTf), pa.joins ? actCell(pa.joins) : (pa.no === 1 && FP.source === 'calc' ? '—' : '')]; }), 'paths', { all: true, small: true });
       var fpRows = [];
@@ -3305,9 +3477,9 @@ function buildNarrative(R, M, o) {
   if (num.targets) {
     var b6 = '', TG = M.targets, RK = M.risk && !M.risk.none ? M.risk : null, sub6 = subs('targets');
     if (RK && TG.length) b6 += sub6('Target date assessment');
-    if (!TG.length) b6 += p('No target dates were found. Target dates are milestones or activities with a deadline constraint (for example Finish On or Before) in P6, the headline milestone and the project Must Finish By date. Choose them under Report structure.');
+    if (!TG.length) b6 += p('No target dates were found. Target dates are milestones or activities with a deadline constraint (for example Finish On or Before) in P6' + tgSources + '. Choose them under Report structure.');
     else {
-      b6 += p('Each target date is assessed from its forecast against the target, the float remaining to the target, how that float has moved across the versions loaded and the driving path behind it. ' + 'Targets come from ' + (o.targetsChosen ? 'the selection under Report structure' : 'deadline constraints in P6, the headline milestone and the project Must Finish By date') + '. Ratings: <strong>High</strong> when the forecast misses the target, no float is left, or float is falling fast enough to run out before the target; <strong>Medium</strong> when float is ' + wd(near) + ' or less, fell by five or more working days this period, or three or more other paths are within ' + wd(near) + ' of the driving path; otherwise <strong>Low</strong>.' + (RK ? ' With the schedule risk analysis on, a target is also rated High when its chance of being met is below 50%, and Medium when it is below 80%.' : ''));
+      b6 += p('Each target date is assessed from its forecast against the target, the float remaining to the target, how that float has moved across the versions loaded and the driving path behind it. ' + 'Targets come from ' + (o.targetsChosen ? 'the selection under Report structure' : 'deadline constraints in P6' + tgSources) + '. Ratings: <strong>High</strong> when the forecast misses the target, no float is left, or float is falling fast enough to run out before the target; <strong>Medium</strong> when float is ' + wd(near) + ' or less, fell by five or more working days this period, or three or more other paths are within ' + wd(near) + ' of the driving path; otherwise <strong>Low</strong>.' + (RK ? ' With the schedule risk analysis on, a target is also rated High when its chance of being met is below 50%, and Medium when it is below 80%.' : ''));
       b6 += table([['Target date', 'txt'], ['Target', 'date'], ['Forecast', 'date'], ['Var. (cal. days)', 'num'], ['Float to target', 'num'], ['Change', 'num'], ['Trend (days/month)', 'num'], ['Risk', 'txt']],
         TG.map(function (x) { return [actCell(x.t), x.target != null ? D(x.target) : '—', x.date != null ? D(x.date) + (x.done ? ' A' : '') : '—', x.varCal != null ? sgn(x.varCal) : '—', x.margin != null ? fnum(x.margin) : '—', x.change != null ? sgn(x.change) : '—', !x.done && x.slope != null ? sgn(Math.round(x.slope * 10) / 10) : '—', ratingCell(x.rating)]; }), 'target dates', { all: true });
       b6 += note('Float to target is the working time between the forecast and the target on the activity’s calendar; negative values are behind. Change is since ' + (prev ? 'the previous update' : 'the last version loaded') + '; trend is the average change per month over up to six versions.');
@@ -3379,7 +3551,8 @@ function buildNarrative(R, M, o) {
     b7 += p('The schedule was checked against the critical path requirements. ' + (fl.length ? 'It does not meet ' + plural(fl.length, 'requirement') + (rv.length ? ' and ' + fnum(rv.length) + ' need' + (rv.length === 1 ? 's' : '') + ' review' : '') + '.' : rv.length ? Plural(rv.length, 'requirement needs', 'requirements need') + ' review; the others are met.' : 'All requirements are met.'));
     b7 += table([['Requirement', 'txt'], ['Test', 'txt'], ['Result', 'txt'], ['Status', 'txt']], CP.list.map(function (c) { return [esc(c.req), esc(c.test), esc(c.result), stCell(c.status, STL[c.status])]; }), '', { all: true, widths: [20, 38, 30, 12] });
     var critDef = R.s.critMode === 'longest' ? 'the longest path' : 'total float of ' + wd(R.crit.label.days != null ? R.crit.label.days : 0) + ' or less';
-    b7 += p('Critical activities are those with ' + critDef + ' (' + plural(R.crit.list.length, 'activity', 'activities') + '); near-critical activities have total float up to ' + wd(near) + ' (' + plural(R.float.nearList.length, 'activity', 'activities') + ').');
+    if (R.crit.fallback === 'driving') b7 += p('Critical activities are those with ' + critDef + '. ' + act(H.t) + ' does not meet that, so its driving path (' + plural(R.crit.list.length, 'activity', 'activities') + ') is reported as its critical path; near-critical activities have total float up to ' + wd(near) + ' (' + plural(R.float.nearList.length, 'activity', 'activities') + ').');
+    else b7 += p('Critical activities are those with ' + critDef + ' (' + plural(R.crit.list.length, 'activity', 'activities') + '); near-critical activities have total float up to ' + wd(near) + ' (' + plural(R.float.nearList.length, 'activity', 'activities') + ').');
     var reqs = [['Float trend analysis', num.analysis ? ref('analysis', 2) : 'Schedule Analysis section is off'], ['Longest path reporting', num.critical ? ref('critical', 2) : 'Critical Path Analysis section is off'], ['First 10 float paths', num.critical ? ref('critical', 7) : 'Critical Path Analysis section is off'], ['Risk analysis for every target date', num.targets ? ref('targets') : 'Target Date Risk Analysis section is off']];
     b7 += table([['Reporting requirement', 'txt'], ['Where it is reported', 'txt']], reqs.map(function (r) { return [esc(r[0]), esc(r[1])]; }), '', { all: true, narrow: true });
     var flagged = [];
@@ -3413,7 +3586,7 @@ function buildNarrative(R, M, o) {
   /* ---------- 8. Progress this period ---------- */
   if (num.progress) {
     var pr2 = R.progress, b8 = '';
-    var s8 = pr2.started.length || pr2.completed.length ? 'Between ' + D(R.periodStart) + ' and ' + D(R.dataDate) + ', ' + plural(pr2.started.length, 'activity', 'activities') + ' started and ' + fnum(pr2.completed.length) + (pr2.completed.length === 1 ? ' was' : ' were') + ' completed.' : 'No activities started or finished between ' + D(R.periodStart) + ' and ' + D(R.dataDate) + '.';
+    var s8 = pr2.started.length || pr2.completed.length ? 'Between ' + D(R.periodStart) + ' and ' + D(R.dataDate) + ', ' + (pr2.started.length ? plural(pr2.started.length, 'activity', 'activities') + ' started and ' + (pr2.completed.length ? fnum(pr2.completed.length) + (pr2.completed.length === 1 ? ' was' : ' were') : 'none was') + ' completed.' : plural(pr2.completed.length, 'activity was', 'activities were') + ' completed and none started.') : 'No activities started or finished between ' + D(R.periodStart) + ' and ' + D(R.dataDate) + '.';
     if (pr2.msDone.length) s8 += ' ' + joinAnd(pr2.msDone.map(function (t) { return act(t) + ' was achieved on ' + D(t.finish); })) + '.';
     s8 += pr2.active.length ? ' ' + Plural(pr2.active.length, 'activity is', 'activities are') + ' in progress at the data date.' : ' No activities are in progress at the data date.';
     var pl2 = pr2.plan;
@@ -3467,10 +3640,14 @@ function buildNarrative(R, M, o) {
     if (bl) src.push((files.bl ? '“' + esc(files.bl) + '”' : 'the baseline') + ' (baseline)');
     if (files.hist && files.hist.length) src.push(plural(files.hist.length, 'earlier update') + ' (' + files.hist.map(function (x) { return '“' + esc(x) + '”'; }).join(', ') + ')');
     var b10 = p('Prepared from Primavera P6 XER exports: ' + joinAnd(src) + '. Durations and float are in working days, based on each activity’s calendar. Differences between dates are in calendar days. Activities are matched between versions by Activity ID. Level-of-effort and WBS summary activities are excluded from counts. Dates marked “A” are actual dates.');
+    if (SCP) b10 += p('Scope: the report runs to ' + act(SCP.t) + '. It covers that ' + (SCP.t.isMs ? 'milestone' : 'activity') + ' and the ' + plural(SCP.n - 1, 'activity', 'activities') + ' that precede it through any chain of relationships, completed work included' +
+      (SCP.excluded ? '; the other ' + plural(SCP.excluded, 'activity', 'activities') + ' in the current update are left out' : '') + '.' +
+      (prev || bl || (files.hist && files.hist.length) ? ' The other schedule versions are limited to the same activities, plus any deleted since that led to it.' : '') +
+      (SCP.mfb != null && !SCP.isLast ? ' The project’s Must Finish By date applies to the last activity in the schedule, which is outside this scope, so it is not used.' : ''));
     if (M) {
       var mth = [];
-      mth.push('Critical activities have ' + (R.s.critMode === 'longest' ? 'the longest-path flag' : R.s.critMode === 'project' ? 'total float at or below the P6 project setting' : 'total float of ' + wd(+R.s.critFloat || 0) + ' or less') + '; near-critical activities have total float up to ' + wd(near) + '.');
-      mth.push(M.paths.source === 'p6' ? 'Float paths are taken from the P6 multiple float path fields in the export.' : 'Float paths are calculated from early dates and relationships: relationship float is the working time, on the predecessor’s calendar, between the date a relationship allows and the successor’s scheduled date.');
+      mth.push('Critical activities have ' + (R.s.critMode === 'longest' ? 'the longest-path flag' : R.s.critMode === 'project' ? 'total float at or below the P6 project setting' : 'total float of ' + wd(+R.s.critFloat || 0) + ' or less') + '; near-critical activities have total float up to ' + wd(near) + '.' + (R.crit.fallback === 'driving' ? ' ' + act(H.t) + ' did not meet that definition, so its driving path is reported as its critical path.' : ''));
+      mth.push(M.paths.source === 'p6' ? 'Float paths are taken from the P6 multiple float path fields in the export.' : 'Float paths are calculated from early dates and relationships' + (M.p6PathsElsewhere ? ', because the P6 float paths in the export end at a different activity' : '') + ': relationship float is the working time, on the predecessor’s calendar, between the date a relationship allows and the successor’s scheduled date.');
       if (evOk) mth.push('Earned value uses ' + EVF.what + (E.hasBaseline ? ' from the baseline, spread evenly over baseline dates for planned value' : '') + ', with percent complete as reported in each update.');
       mth.push(LA + '-level reporting uses ' + groupDefText(M.gA) + '; ' + LB.toLowerCase() + ' reporting uses ' + groupDefText(M.gB) + '.');
       if (M.risk && !M.risk.none) mth.push('The schedule risk analysis is a Monte Carlo simulation of ' + thou(M.risk.iter) + ' runs with remaining durations varied from ' + fnum(M.risk.u * 50) + '% shorter to ' + fnum(M.risk.u * 100) + '% longer (triangular distribution, correlation 0.3).');
@@ -4060,18 +4237,193 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
   function dateFmt() { return $('f-date').value || 'dmy'; }
   function opt(v, label, sel) { return '<option value="' + escH(v) + '"' + (sel ? ' selected' : '') + '>' + escH(label) + '</option>'; }
   function autofill() {
-    var c = state.slots.cur, sel = $('f-headline');
-    if (!c) { sel.innerHTML = '<option value="">Automatic</option>'; fillStructure(null); return; }
+    var c = state.slots.cur;
+    if (!c) { fillEnd(null); fillStructure(null); return; }
     var P = c.model.project;
     $('f-title').value = cleanProjectName(P.name);
     $('f-upd').value = detectUpdateNo(P);
-    var prevChoice = sel.value;
-    var ms = c.model.tasks.filter(function (t) { return t.normal && t.isMs; }).sort(function (a, b) { return (a.finish || 0) - (b.finish || 0); });
-    var autoT = (function () { try { return pickHeadline(c.model, ''); } catch (e) { return null; } })();
-    sel.innerHTML = '<option value="">Automatic' + (autoT ? ' (' + escH(autoT.name) + ')' : '') + '</option>' +
-      ms.map(function (t) { return opt(t.code, t.code + ' — ' + t.name); }).join('');
-    sel.value = ms.some(function (t) { return t.code === prevChoice; }) ? prevChoice : '';
+    fillEnd(c.model);
     fillStructure(c.model);
+  }
+
+  /* ---------- report end activity: a searchable list of the current update's activity IDs ---------- */
+  var END_MAX = 60;
+  var endPick = { list: [], by: new Map(), code: '', shown: [], active: -1, autoT: null, pressing: false };
+  function projKey(m) { return (m.project.code || '').replace(/[-_ ]*(update|upd|baseline|bl|u)?[-_ ]*\d*$/i, '').toLowerCase(); }
+  function endKey(m) { return 'end:' + projKey(m); }
+  function activeEndCode() { return endPick.code && state.slots.cur && endPick.by.has(endPick.code) ? endPick.code : ''; }
+  function endLabel(e) { return e.code + ' — ' + e.name; }
+  function endFinish(e) { return e.t.finish == null ? Infinity : e.t.finish; }
+  function fillEnd(m) {
+    var inp = $('f-end');
+    endPick.list = []; endPick.by = new Map(); endPick.autoT = null; endPick.code = '';
+    if (m) {
+      m.tasks.forEach(function (t) {
+        if (!t.normal || !t.code || m.byCode.get(t.code) !== t) return;
+        var e = { code: t.code, name: t.name, t: t, lc: t.code.toLowerCase(), hay: (t.code + ' ' + t.name).toLowerCase() };
+        endPick.list.push(e); endPick.by.set(t.code, e);
+      });
+      try { endPick.autoT = pickHeadline(m, ''); } catch (err) { endPick.autoT = null; }
+      var saved = store.get(endKey(m));
+      if (saved && endPick.by.has(saved)) endPick.code = saved;
+      else if (saved) setStatus(saved + ' is not in this update, so the report end is chosen automatically.');
+    }
+    inp.disabled = !m;
+    inp.placeholder = !m ? 'Load the current update first' : 'Automatic' + (endPick.autoT ? ' (' + endPick.autoT.code + ')' : '');
+    closeEnd();
+    showEndValue();
+  }
+  /* milestones first when nothing is typed; otherwise ID matches, then name matches */
+  function endMatches(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return { items: endPick.list.filter(function (e) { return e.t.isMs; }).sort(function (a, b) { return (endFinish(a) - endFinish(b)) || a.code.localeCompare(b.code, undefined, { numeric: true }); }), total: null };
+    var words = q.split(/\s+/), hits = [];
+    endPick.list.forEach(function (e) {
+      var i = e.lc.indexOf(q), r = e.lc === q ? 0 : i === 0 ? 1 : i > 0 ? 2 : 3, sc = 0;
+      if (r === 3) {
+        // every word must appear; words at the start of a word in the name count most
+        var nm = e.name.toLowerCase();
+        for (var k = 0; k < words.length; k++) {
+          var j = nm.indexOf(words[k]);
+          if (j < 0) { if (e.lc.indexOf(words[k]) >= 0) { sc += 0.5; continue; } return; }
+          sc += j === 0 || !/[a-z0-9]/.test(nm.charAt(j - 1)) ? 2 : 1;
+        }
+      }
+      hits.push({ e: e, r: r, sc: sc });
+    });
+    hits.sort(function (a, b) {
+      if (a.r !== b.r) return a.r - b.r;
+      if (a.r < 3) return a.e.code.localeCompare(b.e.code, undefined, { numeric: true });
+      return (b.sc - a.sc) || ((b.e.t.isMs ? 1 : 0) - (a.e.t.isMs ? 1 : 0)) || ((a.e.t.status === 'C' ? 1 : 0) - (b.e.t.status === 'C' ? 1 : 0)) || (endFinish(a.e) - endFinish(b.e));
+    });
+    return { items: hits.map(function (h) { return h.e; }), total: hits.length };
+  }
+  function isEndOpen() { return !$('f-end-pop').hidden; }
+  function renderEndList() {
+    var q = $('f-end').value, now = activeEndCode() ? endPick.by.get(endPick.code) : null;
+    if (now && q === endLabel(now)) q = '';   // the box shows the current choice: list the milestones
+    var res = endMatches(q), items = res.items.slice(0, END_MAX), blank = !q.trim();
+    endPick.shown = (blank ? [null].concat(now && !now.t.isMs ? [now] : []) : []).concat(items);
+    var selIdx = -1;
+    $('f-end-list').innerHTML = endPick.shown.map(function (e, i) {
+      var sel = e ? e.code === endPick.code : !endPick.code;
+      if (sel) selIdx = i;
+      if (!e) return '<li role="option" id="f-end-o0" class="combo-opt co-auto" data-i="0" aria-selected="' + sel + '"><span class="co-id">Automatic</span><span class="co-name">' +
+        escH(endPick.autoT ? endPick.autoT.code + ' — ' + endPick.autoT.name : 'Chosen from the schedule') + '</span><span class="co-meta">The whole schedule</span></li>';
+      var t = e.t, meta = escH((t.isMs ? 'Milestone' : 'Activity') + ' · ' + (STATUS_LABEL[t.status] || '')) + (t.finish != null ? ' · <span class="nw">' + escH(fmtDate(t.finish, dateFmt()) + (t.status === 'C' ? ' A' : '')) + '</span>' : '');
+      return '<li role="option" id="f-end-o' + i + '" class="combo-opt" data-i="' + i + '" aria-selected="' + sel + '"><span class="co-id">' + escH(e.code) + '</span><span class="co-name">' + escH(e.name) + '</span><span class="co-meta">' + meta + '</span></li>';
+    }).join('');
+    var note = blank ? (endPick.list.length ? 'Type to search all ' + plural(endPick.list.length, 'activity', 'activities') + ' by ID or name.' : '')
+      : !res.total ? 'No activity ID or name matches “' + q.trim() + '”.' : res.total > items.length ? 'Showing ' + items.length + ' of ' + res.total + ' matches. Keep typing to narrow the list.' : '';
+    $('f-end-note').textContent = note; $('f-end-note').hidden = !note;
+    setEndActive(blank ? selIdx : (endPick.shown.length ? 0 : -1));
+  }
+  function setEndActive(i) {
+    var lis = $('f-end-list').children, inp = $('f-end');
+    if (endPick.active >= 0 && lis[endPick.active]) lis[endPick.active].classList.remove('is-active');
+    endPick.active = i;
+    if (i >= 0 && lis[i]) {
+      lis[i].classList.add('is-active'); inp.setAttribute('aria-activedescendant', lis[i].id);
+      var pop = $('f-end-pop'), top = lis[i].offsetTop, bot = top + lis[i].offsetHeight;
+      if (top < pop.scrollTop) pop.scrollTop = top - 4; else if (bot > pop.scrollTop + pop.clientHeight) pop.scrollTop = bot - pop.clientHeight + 4;
+    } else inp.removeAttribute('aria-activedescendant');
+  }
+  function openEnd() {
+    if ($('f-end').disabled) return;
+    $('f-end-pop').hidden = false; $('f-end').setAttribute('aria-expanded', 'true');
+    renderEndList();
+  }
+  function closeEnd() {
+    $('f-end-pop').hidden = true; $('f-end').setAttribute('aria-expanded', 'false'); $('f-end').removeAttribute('aria-activedescendant');
+    endPick.active = -1; endPick.pressing = false;
+  }
+  function showEndValue() {
+    var e = activeEndCode() ? endPick.by.get(endPick.code) : null;
+    $('f-end').value = e ? endLabel(e) : '';
+    $('f-end-clear').hidden = !e;
+    $('w-endscope').hidden = !e;
+  }
+  function chooseEnd(code) {
+    var before = activeEndCode();
+    endPick.code = code && endPick.by.has(code) ? code : '';
+    var c = state.slots.cur; if (c) store.set(endKey(c.model), endPick.code || null);
+    closeEnd(); showEndValue();
+    if (endPick.code !== before) { refreshEndDependent(); settingsChanged(); }
+  }
+  /* what was typed, when the box loses focus: an exact ID picks it, an empty box means automatic */
+  function commitTyped() {
+    var v = $('f-end').value.trim(), now = activeEndCode() ? endPick.by.get(endPick.code) : null;
+    if (now && v === endLabel(now)) return;
+    if (!v) { chooseEnd(''); return; }
+    var lv = v.toLowerCase(), hit = endPick.by.get(v) || endPick.list.filter(function (x) { return x.lc === lv || endLabel(x).toLowerCase() === lv; })[0];
+    if (hit) chooseEnd(hit.code); else showEndValue();
+  }
+  function wireEnd() {
+    var inp = $('f-end'), pop = $('f-end-pop');
+    inp.addEventListener('input', openEnd);
+    inp.addEventListener('focus', function () { if (activeEndCode()) inp.select(); });
+    inp.addEventListener('click', function () { if (!isEndOpen()) openEnd(); });
+    inp.addEventListener('keydown', function (e) {
+      var n = endPick.shown.length;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!isEndOpen()) { openEnd(); return; }
+        if (!n) return;
+        var down = e.key === 'ArrowDown', i = endPick.active < 0 ? (down ? 0 : n - 1) : (endPick.active + (down ? 1 : -1) + n) % n;
+        setEndActive(i);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (isEndOpen() && endPick.active >= 0) { var x = endPick.shown[endPick.active]; chooseEnd(x ? x.code : ''); }
+        else { closeEnd(); commitTyped(); }
+      } else if (e.key === 'Escape') {
+        if (isEndOpen()) { e.preventDefault(); closeEnd(); showEndValue(); }
+      } else if (e.key === 'Tab') { closeEnd(); commitTyped(); }
+    });
+    inp.addEventListener('blur', function () { if (endPick.pressing) return; if (isEndOpen()) closeEnd(); commitTyped(); });
+    // keep the focus in the box while an option is clicked
+    pop.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    pop.addEventListener('pointerdown', function () { endPick.pressing = true; });
+    pop.addEventListener('pointercancel', function () { endPick.pressing = false; });
+    $('f-end-list').addEventListener('click', function (e) {
+      var li = e.target.closest ? e.target.closest('li[data-i]') : null; if (!li) return;
+      var x = endPick.shown[+li.getAttribute('data-i')];
+      chooseEnd(x ? x.code : '');
+    });
+    document.addEventListener('pointerdown', function (e) {
+      if (!isEndOpen() || $('c-end').contains(e.target)) return;
+      closeEnd(); commitTyped();
+    });
+    $('f-end-clear').addEventListener('click', function () { chooseEnd(''); inp.focus(); });
+    var sv = store.get('f-endscope'); $('f-endscope').checked = sv !== false;
+    $('f-endscope').addEventListener('change', function () { store.set('f-endscope', $('f-endscope').checked); refreshEndDependent(); settingsChanged(); });
+  }
+
+  /* The schedules the report is written from: when it runs to one activity, each
+     version is cut to the work leading to it (kept until the inputs change). */
+  var scopeMemo = null;
+  function reportModels() {
+    var sl = state.slots, c = sl.cur;
+    if (!c) return null;
+    var ms = [c.model, sl.prev ? sl.prev.model : null, sl.bl ? sl.bl.model : null].concat(sl.hist.map(function (s) { return s.model; }));
+    var code = activeEndCode() && $('f-endscope').checked ? activeEndCode() : '';
+    if (scopeMemo && scopeMemo.code === code && scopeMemo.ms.length === ms.length && scopeMemo.ms.every(function (m, i) { return m === ms[i]; })) return scopeMemo.out;
+    var sc = code ? scopeToActivity(ms[0], ms.slice(1), code) : null;
+    var out = sc ? { cur: sc.cur, prev: sc.others[0], bl: sc.others[1], hist: sc.others.slice(2), info: sc.info } : { cur: ms[0], prev: ms[1], bl: ms[2], hist: ms.slice(3), info: null };
+    scopeMemo = { code: code, ms: ms, out: out };
+    return out;
+  }
+  /* the float path end and target lists follow the report's scope */
+  function refreshEndDependent() {
+    var rm = reportModels(), m = rm ? rm.cur : null;
+    var pe = $('f-pathend'), pv = pe.value;
+    var ms = m ? m.tasks.filter(function (t) { return t.normal && t.status !== 'C' && t.isMs; }).sort(function (a, b) { return (a.finish || 0) - (b.finish || 0); }) : [];
+    pe.innerHTML = opt('', 'The report end activity') + ms.map(function (t) { return opt(t.code, t.code + ' — ' + t.name); }).join('');
+    pe.value = ms.some(function (t) { return t.code === pv; }) ? pv : '';
+    renderTargets(m);
+    var info = rm && rm.info, el = $('f-end-info');
+    el.textContent = info ? 'The report covers ' + (info.excluded ? fnum(info.n) + ' of the ' + plural(info.total, 'activity', 'activities') : 'all ' + plural(info.total, 'activity', 'activities')) + ' in the schedule: ' + info.code + ' and the work that leads to it.'
+      : activeEndCode() ? 'The report covers the whole schedule.' : '';
+    el.hidden = !el.textContent;
   }
   /* grouping, element and target choices depend on the current update's codes and WBS */
   function fillStructure(m) {
@@ -4090,14 +4442,10 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
     es.innerHTML = opt('auto', 'Automatic (an element activity code if there is one, otherwise keywords)', sv === 'auto') + opt('keywords', 'Keywords in activity and WBS names', sv === 'keywords') +
       types.map(function (c) { return opt('code:' + c.name, 'Activity code: ' + c.name, sv === 'code:' + c.name); }).join('');
     if (!es.value) es.value = 'auto';
-    // float paths end
-    var pe = $('f-pathend'), pv = pe.value;
-    var ms = m ? m.tasks.filter(function (t) { return t.normal && t.status !== 'C' && t.isMs; }).sort(function (a, b) { return (a.finish || 0) - (b.finish || 0); }) : [];
-    pe.innerHTML = opt('', 'Headline milestone') + ms.map(function (t) { return opt(t.code, t.code + ' — ' + t.name); }).join('');
-    pe.value = ms.some(function (t) { return t.code === pv; }) ? pv : '';
-    renderTargets(m);
+    // float paths end and target dates
+    refreshEndDependent();
   }
-  function targetKey(m) { return 'targets:' + (m.project.code || '').replace(/[-_ ]*(update|upd|baseline|bl|u)?[-_ ]*\d*$/i, '').toLowerCase(); }
+  function targetKey(m) { return 'targets:' + projKey(m); }
   function renderTargets(m) {
     var box = $('f-tlist');
     if (!m) { box.innerHTML = ''; return; }
@@ -4108,7 +4456,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
     var cands = m.tasks.filter(function (t) { return t.normal && m.byCode.get(t.code) === t && (t.isMs || deadlineOf(t)); }).sort(function (a, b) { return (a.finish || 0) - (b.finish || 0); });
     var chosen = saved ? new Set(saved) : autoSet;
     box.innerHTML = cands.length ? cands.map(function (t) {
-      return '<label class="inline"><input type="checkbox" value="' + escH(t.code) + '"' + (chosen.has(t.code) ? ' checked' : '') + (saved ? '' : ' disabled') + '> <span class="aid">' + escH(t.code) + '</span> ' + escH(t.name) + (deadlineOf(t) ? ' <span class="tag-c">' + escH(CSTR_LABEL[deadlineOf(t).type] || 'Deadline') + '</span>' : '') + '</label>';
+      return '<label class="inline"><input type="checkbox" value="' + escH(t.code) + '"' + (chosen.has(t.code) ? ' checked' : '') + (saved ? '' : ' disabled') + '><span><span class="aid">' + escH(t.code) + '</span> ' + escH(t.name) + (deadlineOf(t) ? ' <span class="tag-c">' + escH(CSTR_LABEL[deadlineOf(t).type] || 'Deadline') + '</span>' : '') + '</span></label>';
     }).join('') : '<p class="hint">This schedule has no milestones or deadline constraints.</p>';
   }
   function chosenTargets() {
@@ -4124,7 +4472,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
     return {
       nearCrit: Math.max(1, +$('f-near').value || 20), lookahead: +$('f-look').value || 30,
       critMode: $('f-crit').value, critFloat: +$('f-critfloat').value || 0,
-      headline: $('f-headline').value, periodStart: parseIsoDay($('f-period').value)
+      headline: activeEndCode(), periodStart: parseIsoDay($('f-period').value)
     };
   }
   function monthlySettings() {
@@ -4170,11 +4518,12 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
   function generate() {
     var c = state.slots.cur;
     if (!c) { renderEmpty(); return; }
-    var p = state.slots.prev, b = state.slots.bl, warn = null;
+    var warn = null;
     try {
-      var R = analyze(c.model, p && p.model, b && b.model, analysisSettings());
+      var rm = reportModels();
+      var R = analyze(rm.cur, rm.prev, rm.bl, analysisSettings());
       var M = null;
-      try { M = analyzeMonthly(R, { hist: state.slots.hist.map(function (s) { return s.model; }) }, monthlySettings()); }
+      try { M = analyzeMonthly(R, { hist: rm.hist }, monthlySettings()); }
       catch (e2) { if (window.console) console.error(e2); warn = 'Part of the analysis could not be completed (' + (e2 && e2.message ? e2.message : String(e2)) + '), so the earned value, target date and compliance sections are left out.'; }
       var out = buildNarrative(R, M, narrativeOptions());
       state.R = R; state.M = M; state.out = out; state.edited = false; state.pending = false; state.warn = warn;
@@ -4218,7 +4567,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
       var v = R.cmpKind === 'prev' ? H.varPrev : H.varBl;
       var bad = !H.done && (H.varCstr > 0 || (H.tf != null && H.tf < 0));
       var tone = H.done ? 'good' : bad ? 'bad' : v > 0 ? 'warn' : 'good';
-      var chip = H.done ? 'Achieved' : H.varCstr > 0 ? H.varCstr + ' days late' : H.constraint ? 'Meets target' : v > 0 ? 'Slipped' : v < 0 ? 'Improved' : 'On forecast';
+      var chip = H.done ? (H.t.isMs ? 'Achieved' : 'Complete') : H.varCstr > 0 ? H.varCstr + ' days late' : H.constraint ? 'Meets target' : v > 0 ? 'Slipped' : v < 0 ? 'Improved' : 'On forecast';
       var subs = [];
       if (H.varPrev != null && !H.prevDone) subs.push(sgn(H.varPrev) + ' d vs previous');
       if (H.varBl != null) subs.push(sgn(H.varBl) + ' d vs baseline');
@@ -4525,14 +4874,14 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
       });
     });
     ['f-labela', 'f-labelb'].forEach(function (id) { $(id).addEventListener('input', function () { store.set(id, $(id).value); settingsChanged(); }); });
-    ['f-period', 'f-headline', 'f-crit', 'f-critfloat', 'f-near', 'f-look', 'f-rows', 'f-date', 'f-hpd', 'f-evb', 'f-paths', 'f-pathend', 'f-groupa', 'f-groupb', 'f-elsrc'].forEach(function (id) {
+    ['f-period', 'f-crit', 'f-critfloat', 'f-near', 'f-look', 'f-rows', 'f-date', 'f-hpd', 'f-evb', 'f-paths', 'f-pathend', 'f-groupa', 'f-groupb', 'f-elsrc'].forEach(function (id) {
       $(id).addEventListener('change', function () {
         if (PERSIST.indexOf(id) >= 0) store.set(id, $(id).value);
         if (id === 'f-groupa') store.set('groupA', $(id).value);
         if (id === 'f-groupb') store.set('groupB', $(id).value);
         if (id === 'f-elsrc') store.set('elemSource', $(id).value);
         if (id === 'f-crit') $('w-critfloat').hidden = $('f-crit').value !== 'float';
-        if (id === 'f-hpd') { SINGLE.forEach(function (k) { if (state.slots[k]) buildSlotModel(state.slots[k]); }); state.slots.hist.forEach(buildSlotModel); }
+        if (id === 'f-hpd') { SINGLE.forEach(function (k) { if (state.slots[k]) buildSlotModel(state.slots[k]); }); state.slots.hist.forEach(buildSlotModel); if (state.slots.cur) { fillEnd(state.slots.cur.model); refreshEndDependent(); } }
         if (id === 'f-date') SINGLE.concat(['hist']).forEach(renderSlot);
         settingsChanged();
       });
@@ -4547,7 +4896,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
       var c = state.slots.cur; if (!c) return;
       if ($('f-tauto').checked) store.set(targetKey(c.model), null);
       else store.set(targetKey(c.model), Array.from($('f-tlist').querySelectorAll('input:checked')).map(function (i) { return i.value; }));
-      renderTargets(c.model); settingsChanged();
+      renderTargets(reportModels().cur); settingsChanged();
     });
     $('f-tlist').addEventListener('change', function () {
       var c = state.slots.cur; if (!c || $('f-tauto').checked) return;
@@ -4560,6 +4909,7 @@ var SAMPLES = window.__SNG_SAMPLES__ || null;
   /* ---------- start ---------- */
   buildSlots();
   wireSettings();
+  wireEnd();
   fillStructure(null);
   wireEditing();
   wireCharts();
