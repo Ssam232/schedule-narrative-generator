@@ -19,6 +19,8 @@ XER files are read by JavaScript in the visitor's own browser. They are never up
 
 Highlighted blanks mark the places that need the scheduler's input, such as causes, explanations and recovery actions.
 
+The **Light / Dark** switch in the top bar changes the page's colours. It starts on your system setting and remembers your choice in that browser; the Word file and copied text always use the light, printable colours.
+
 ## Inputs
 
 - **Current update** (required), **previous update**, **baseline**, and any number of **earlier updates** for trends. Drop all the files at once and they are sorted by data date.
