@@ -4,7 +4,16 @@ Drafts the monthly schedule progress report from Primavera P6 XER exports. The r
 
 Live app: https://schedule-narrative-generator.streamlit.app
 
-XER files are read by JavaScript in the visitor's own browser. They are never uploaded to the server, and no AI service is used: the report is written by built-in rules from the schedule data.
+XER files are read by JavaScript in the visitor's own browser. They are never uploaded to the server, and no AI service is used: the report is written by built-in rules from the schedule data. The page's **Privacy and how it works** link (top bar) explains this to users in plain language.
+
+## Privacy and security
+
+- **Nothing is uploaded.** Files are read into the browser tab's memory, analysed there and discarded when the file is removed or the page is closed. There is no server processing, account, AI service or database.
+- **The page cannot connect anywhere.** `index.html` carries a Content Security Policy that lets the browser run only the page's own scripts (by hash) and blocks every network request, form submission, frame and worker. Even a damaged or malicious XER file could not send data out.
+- **Schedule text is never run as code.** Every name from a file, and everything typed into the page, is escaped before display and in the Word and Markdown exports. This is tested with XER files full of script-like text.
+- **No third parties.** Fonts are embedded in the page, so it loads nothing from Google or any CDN. There are no analytics, trackers, cookies or ads, and `.streamlit/config.toml` turns off Streamlit's usage statistics.
+- **What stays in the browser:** settings only (the Prepared by name, light or dark mode, chosen target dates and end activity, element keywords), in local storage on that device. The page's **Clear saved settings** button removes them.
+- **Hosting:** Streamlit Community Cloud serves the page and, like any web host, can see that a visit happened (for example the visitor's IP address). The offline copy of `index.html` needs no host at all.
 
 ## What the report contains
 
@@ -39,6 +48,8 @@ A fictional sample bridge project (a baseline and seven monthly updates) loads o
 - `index.html`: the generator itself (it also works when opened directly in a browser)
 - `requirements.txt`: the Streamlit version the app was tested with
 - `favicon.png`: browser tab icon
+- `.streamlit/config.toml`: turns off Streamlit's usage statistics
+- `OFL.txt`: licence for the fonts embedded in the page (Barlow, Barlow Semi Condensed, Carlito and IBM Plex Mono, SIL Open Font License 1.1)
 
 ## Deploy on Streamlit Community Cloud
 

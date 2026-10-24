@@ -2,7 +2,9 @@
 
 The generator is a self-contained web page (index.html). Visitors' P6 XER files
 are read and analysed by JavaScript in their own browser and are never sent to
-this server. This app only serves the page and sizes it to fill the window.
+this server. The page carries a Content Security Policy that stops it connecting
+to any server, and .streamlit/config.toml turns off Streamlit's usage statistics.
+This app only serves the page and sizes it to fill the window.
 """
 from pathlib import Path
 

@@ -1,0 +1,6 @@
+# Schedule Narrative Generator on Streamlit Community Cloud.
+# The generator runs entirely in the visitor's browser; this app only serves the page.
+
+[browser]
+# Do not send Streamlit usage statistics from visitors' browsers.
+gatherUsageStats = false
